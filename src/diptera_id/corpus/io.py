@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import uuid
 from pathlib import Path
 from typing import Iterator
 
@@ -63,6 +64,7 @@ class ManifestWriter:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._pending = self.path.with_name(self.path.name + f".{uuid.uuid4().hex}.pending")
         self.rows_written = 0
         self._parquet_writer = None
         self._csv_header = True
@@ -88,11 +90,11 @@ class ManifestWriter:
             normalized = rows.astype(str)
             table = pa.Table.from_pandas(normalized, preserve_index=False)
             if self._parquet_writer is None:
-                self._parquet_writer = pq.ParquetWriter(self.path, table.schema, compression="zstd")
+                self._parquet_writer = pq.ParquetWriter(self._pending, table.schema, compression="zstd")
             self._parquet_writer.write_table(table)
         else:
             rows.to_csv(
-                self.path,
+                self._pending,
                 index=False,
                 mode="w" if self._csv_header else "a",
                 header=self._csv_header,
@@ -101,15 +103,18 @@ class ManifestWriter:
             )
             self._csv_header = False
 
-    def close(self) -> None:
+    def close(self, commit: bool = True) -> None:
         if self._parquet_writer is not None:
             self._parquet_writer.close()
+            self._parquet_writer = None
+        if commit and self.rows_written and self._pending.exists():
+            self._pending.replace(self.path)
 
     def __enter__(self) -> "ManifestWriter":
         return self
 
-    def __exit__(self, *_exc) -> None:
-        self.close()
+    def __exit__(self, exc_type, *_exc) -> None:
+        self.close(commit=exc_type is None)
 
 
 def load_manifest(path: str | Path) -> pd.DataFrame:

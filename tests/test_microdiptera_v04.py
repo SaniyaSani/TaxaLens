@@ -41,6 +41,17 @@ def test_multiview_fusion_keeps_one_vector_per_specimen():
     assert specimen_a["available_views"] == "dorsal,wing"
 
 
+def test_blank_specimen_ids_never_collapse_unrelated_records():
+    frame = pd.DataFrame([
+        {"specimen_group_id": "", "record_id": "one", "view_type": "habitus", "family": "Muscidae"},
+        {"specimen_group_id": "", "record_id": "two", "view_type": "habitus", "family": "Muscidae"},
+    ])
+    fused_frame, fused_vectors = fuse_specimens(frame, np.eye(2, dtype=np.float32))
+    assert len(fused_frame) == len(fused_vectors) == 2
+    assert fused_frame["specimen_group_id"].is_unique
+    assert sorted(fused_frame["embedding_view_ids"]) == ["one", "two"]
+
+
 def test_hierarchical_training_and_inference(tmp_path: Path):
     rows = []
     vectors = []
