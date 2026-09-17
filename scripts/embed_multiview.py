@@ -41,22 +41,48 @@ def normalized_mean(vectors: np.ndarray) -> np.ndarray:
 def fuse_specimens(frame: pd.DataFrame, vectors: np.ndarray) -> tuple[pd.DataFrame, np.ndarray]:
     if len(frame) != len(vectors):
         raise ValueError("view manifest and embeddings have different row counts")
-    group_column = next((name for name in ("specimen_group_id", "split_group", "record_id") if name in frame.columns), None)
-    if not group_column:
-        frame = frame.copy()
+    frame = frame.copy()
+    if "record_id" not in frame:
         frame["record_id"] = [f"view-{index}" for index in range(len(frame))]
-        group_column = "record_id"
+    record_keys = frame["record_id"].astype(str).str.strip()
+    if record_keys.eq("").any():
+        record_keys = record_keys.where(
+            record_keys.ne(""),
+            pd.Series([f"row-{index}" for index in range(len(frame))], index=frame.index),
+        )
+    if "specimen_group_id" in frame:
+        specimen_keys = frame["specimen_group_id"].astype(str).str.strip()
+        # Blank specimen ids are separate records, never one giant blank specimen.
+        group_keys = specimen_keys.where(specimen_keys.ne(""), "record:" + record_keys)
+    else:
+        group_keys = "record:" + record_keys
+    frame["__embedding_specimen_key"] = group_keys
 
     rows: list[dict] = []
     fused_vectors: list[np.ndarray] = []
-    for group, indices in frame.groupby(group_column, sort=True).indices.items():
+    for group, indices in frame.groupby("__embedding_specimen_key", sort=True).indices.items():
         selected = np.asarray(indices, dtype=int)
         row = frame.iloc[selected[0]].to_dict()
         views = sorted({str(value) for value in frame.iloc[selected].get("view_type", pd.Series(["habitus"])).tolist() if str(value)})
         row["view_count"] = len(selected)
         row["available_views"] = ",".join(views) or "habitus"
-        row["specimen_group_id"] = str(group)
-        row["split_group"] = str(group)
+        row["embedding_view_ids"] = ",".join(sorted(
+            str(value) for value in frame.iloc[selected]["record_id"].tolist()
+        ))
+        existing_specimen = str(row.get("specimen_group_id", "")).strip()
+        row["specimen_group_id"] = existing_specimen or str(group)
+        split_groups = {
+            str(value).strip()
+            for value in frame.iloc[selected].get("split_group", pd.Series(dtype=str)).tolist()
+            if str(value).strip()
+        }
+        if len(split_groups) > 1:
+            raise ValueError(f"conflicting split_group values within specimen {group}")
+        row["split_group"] = next(iter(split_groups), str(group))
+        if "split" in frame:
+            splits = {str(value).strip() for value in frame.iloc[selected]["split"] if str(value).strip()}
+            if len(splits) > 1:
+                raise ValueError(f"conflicting dataset splits within specimen {group}")
         for rank in ("family", "genus", "species"):
             if rank not in frame.columns:
                 continue
@@ -67,7 +93,8 @@ def fuse_specimens(frame: pd.DataFrame, vectors: np.ndarray) -> tuple[pd.DataFra
                 row["exclusion_reason"] = f"conflicting_{rank}_within_specimen"
         rows.append(row)
         fused_vectors.append(normalized_mean(vectors[selected]))
-    return pd.DataFrame(rows), np.stack(fused_vectors).astype(np.float32)
+    result = pd.DataFrame(rows).drop(columns=["__embedding_specimen_key"], errors="ignore")
+    return result, np.stack(fused_vectors).astype(np.float32)
 
 
 def main() -> None:

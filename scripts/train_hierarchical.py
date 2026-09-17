@@ -14,6 +14,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from collections import Counter
 
+from embedding_safety import cohort_indices, cohort_digest
+
 
 def deterministic_split(group: str, train_percent: int = 80, val_percent: int = 10) -> str:
     bucket = int(hashlib.sha256(group.encode("utf-8")).hexdigest()[:8], 16) % 100
@@ -59,6 +61,7 @@ def evaluation_breakdown(
     classes: np.ndarray,
     sources: np.ndarray,
     source_splits: np.ndarray | None = None,
+    dataset_splits: np.ndarray | None = None,
 ) -> dict:
     by_source: dict[str, dict] = {}
     for source in sorted(set(sources)):
@@ -86,7 +89,25 @@ def evaluation_breakdown(
         {"truth": truth_label, "predicted": predicted_label, "count": int(count)}
         for (truth_label, predicted_label), count in errors.most_common(50)
     ]
-    return {"by_source": by_source, "by_source_split": by_source_split, "top_confusions": confusion_pairs}
+    by_dataset_split: dict[str, dict] = {}
+    if dataset_splits is not None:
+        for split in sorted(set(dataset_splits)):
+            split_mask = dataset_splits == split
+            if not np.any(split_mask):
+                continue
+            by_dataset_split[str(split)] = {
+                "n": int(split_mask.sum()),
+                "top1_accuracy": float(accuracy_score(truth[split_mask], predicted[split_mask])),
+                "top5_accuracy": top_k_accuracy(
+                    truth[split_mask], probabilities[split_mask], classes, min(5, len(classes))
+                ),
+            }
+    return {
+        "by_source": by_source,
+        "by_source_split": by_source_split,
+        "by_dataset_split": by_dataset_split,
+        "top_confusions": confusion_pairs,
+    }
 
 
 def train_head(
@@ -128,8 +149,9 @@ def train_head(
             if "source_split" in frame.columns
             else None
         )
+        dataset_splits = frame.iloc[eval_indices]["split"].astype(str).to_numpy()
         metrics.update(evaluation_breakdown(
-            truth, predicted, probabilities, model.classes_, sources_eval, source_splits
+            truth, predicted, probabilities, model.classes_, sources_eval, source_splits, dataset_splits
         ))
     return model, gate, metrics
 
@@ -137,6 +159,7 @@ def train_head(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-dir", default="models_microdiptera")
+    parser.add_argument("--cohort-manifest", help="Align this model to the exact shared evaluation cohort")
     parser.add_argument("--out", help="Defaults to MODEL_DIR/classifiers.joblib")
     parser.add_argument("--min-family", type=int, default=20)
     parser.add_argument("--min-genus", type=int, default=12)
@@ -147,19 +170,34 @@ def main() -> None:
     args = parser.parse_args()
 
     model_dir = Path(args.model_dir)
-    frame = pd.read_csv(model_dir / "embedded_manifest.csv").fillna("")
+    frame = pd.read_csv(model_dir / "embedded_manifest.csv", dtype=str, keep_default_na=False)
     vectors = np.load(model_dir / "embeddings.npy").astype(np.float32)
-    vectors /= np.clip(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12, None)
     if len(frame) != len(vectors):
         raise SystemExit("embedded manifest and embeddings.npy have different row counts")
+    if args.cohort_manifest:
+        cohort = pd.read_csv(args.cohort_manifest, dtype=str, keep_default_na=False)
+        indices = cohort_indices(frame, cohort)
+        frame = frame.iloc[indices].reset_index(drop=True)
+        vectors = vectors[indices]
+    vectors /= np.clip(np.linalg.norm(vectors, axis=1, keepdims=True), 1e-12, None)
     if "source" not in frame:
         frame["source"] = "unknown"
     if "split_group" not in frame:
         frame["split_group"] = [f"specimen-{index}" for index in range(len(frame))]
-    if "split" not in frame or not frame["split"].astype(str).str.len().any():
-        frame["split"] = frame["split_group"].astype(str).map(deterministic_split)
+    if "split" not in frame:
+        frame["split"] = ""
+    missing_split = frame["split"].astype(str).str.strip().eq("")
+    frame.loc[missing_split, "split"] = frame.loc[missing_split, "split_group"].astype(str).map(deterministic_split)
+    unknown_splits = set(frame["split"].astype(str)) - {"train", "val", "test"}
+    if unknown_splits:
+        raise SystemExit(f"unknown dataset split values: {sorted(unknown_splits)}")
+    if (frame.groupby("split_group")["split"].nunique() > 1).any():
+        raise SystemExit("split leakage: the same split_group occurs in multiple dataset splits")
 
-    all_rows = pd.Series([True] * len(frame), index=frame.index)
+    if "eligible_supervised" in frame:
+        all_rows = frame["eligible_supervised"].astype(str).str.lower().isin({"true", "1", "yes"})
+    else:
+        all_rows = pd.Series([True] * len(frame), index=frame.index)
     family_model, family_gate, family_metrics = train_head(
         vectors, frame, "family", all_rows, args.min_family, args.gate_quantile, args.gate_margin
     )
@@ -200,7 +238,18 @@ def main() -> None:
     config_path = model_dir / "embedding_config.json"
     if config_path.exists():
         embedding_config = json.loads(config_path.read_text(encoding="utf-8"))
-    report = {"family": family_metrics, "genus_by_family": genus_report, "species_by_genus": species_report}
+    evaluation_context = {
+        "cohort_sha256": cohort_digest(frame),
+        "specimens": int(len(frame)),
+        "split_counts": {str(key): int(value) for key, value in frame["split"].value_counts().items()},
+        "comparison_rule": "all encoders must use this exact specimen cohort",
+    }
+    report = {
+        "evaluation_context": evaluation_context,
+        "family": family_metrics,
+        "genus_by_family": genus_report,
+        "species_by_genus": species_report,
+    }
     payload = {
         "bundle_type": "hierarchical_v1",
         "hierarchical_models": {
@@ -214,12 +263,14 @@ def main() -> None:
             "species_by_genus": species_gates,
         },
         "metadata": {
-            "training": "hierarchical source-balanced whole-fly DINO embeddings",
+            "training": "hierarchical source-balanced whole-specimen embeddings",
             "embedding": embedding_config,
             "species_label_quality": sorted(allowed_quality),
             "open_set": {"method": "class centroid lower-quantile gate", "quantile": args.gate_quantile, "margin": args.gate_margin},
             "confidence_note": "scores are not taxonomic certainty; fine-rank suggestions require independent verification",
+            "evaluation_scope": "family is end-to-end; genus/species head metrics are conditional on the true parent taxon",
             "evaluation": report,
+            "evaluation_context": evaluation_context,
         },
     }
     out = Path(args.out) if args.out else model_dir / "classifiers.joblib"

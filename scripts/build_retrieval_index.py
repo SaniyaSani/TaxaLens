@@ -19,7 +19,7 @@ def main():
     x = x / np.clip(norms, 1e-12, None)
     df = pd.read_csv(model_dir / "embedded_manifest.csv")
 
-    np.save(model_dir / "retrieval_vectors.npy", x)
+    np.save(model_dir / "retrieval_vectors.npy", x.astype(np.float16))
     keep_cols = [c for c in [
         "source", "observation_id", "photo_id", "image_url", "local_path",
         "family", "genus", "species", "event_date", "observer", "photo_license",

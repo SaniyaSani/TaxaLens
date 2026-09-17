@@ -194,8 +194,7 @@ def main() -> None:
         if valid_existing(path):
             complete.add(index)
             skipped_existing += 1
-        elif path.exists():
-            path.unlink()
+        # Invalid files are replaced only after a new JPEG has been verified.
 
     def checkpoint(active_archive: str = "") -> None:
         save_progress(progress_path, {
@@ -278,7 +277,9 @@ def main() -> None:
 
     completed_rows = [rows[index] for index in sorted(complete)]
     out_manifest.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(completed_rows).to_csv(out_manifest, index=False)
+    pending_manifest = out_manifest.with_name(out_manifest.name + ".pending")
+    pd.DataFrame(completed_rows, columns=frame.columns.union(["local_path"], sort=False)).to_csv(pending_manifest, index=False)
+    pending_manifest.replace(out_manifest)
     completed_by_group = Counter(rows[index]["archive_group"] for index in complete)
     report = {
         "requested": len(rows),

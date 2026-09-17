@@ -1,0 +1,6 @@
+-r requirements-corpus.txt
+torch
+torchvision
+transformers>=4.56
+open_clip_torch>=2.32
+faiss-cpu

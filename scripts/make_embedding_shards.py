@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import sys
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -17,6 +18,14 @@ from diptera_id.corpus.io import ManifestWriter, load_manifest
 def shard_for(group: str, count: int, seed: int) -> int:
     digest = hashlib.sha256(f"{seed}\x1f{group}".encode("utf-8")).hexdigest()
     return int(digest[:16], 16) % count
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def main() -> None:
@@ -52,14 +61,25 @@ def main() -> None:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    index = {"input": str(args.input), "rows": int(len(frame)), "shard_count": shard_count, "group_column": group_column, "shards": []}
+    input_path = Path(args.input)
+    input_sha256 = file_sha256(input_path)
+    index = {"input": str(args.input), "input_sha256": input_sha256, "rows": int(len(frame)), "shard_count": shard_count, "group_column": group_column, "shards": []}
+    expected_paths: set[Path] = set()
     for shard_id in range(shard_count):
         selected = frame[assignments.eq(shard_id)].copy()
         path = out_dir / f"shard_{shard_id:05d}.parquet"
+        expected_paths.add(path)
         with ManifestWriter(path) as writer:
             writer.write(selected)
-        index["shards"].append({"id": shard_id, "path": str(path), "rows": int(len(selected))})
-    (out_dir / "shards.json").write_text(json.dumps(index, indent=2), encoding="utf-8")
+        index["shards"].append({"id": shard_id, "path": str(path), "rows": int(len(selected)),
+                                "sha256": file_sha256(path)})
+    # Remove only stale derived manifest shards after every new shard succeeded.
+    for stale in set(out_dir.glob("shard_*.parquet")) - expected_paths:
+        stale.unlink()
+    index_path = out_dir / "shards.json"
+    pending = index_path.with_name(index_path.name + f".{uuid.uuid4().hex}.pending")
+    pending.write_text(json.dumps(index, indent=2), encoding="utf-8")
+    pending.replace(index_path)
     sizes = [item["rows"] for item in index["shards"]]
     print(f"wrote {shard_count} group-safe shards; rows min={min(sizes)} max={max(sizes)} -> {out_dir}")
 

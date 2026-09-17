@@ -69,7 +69,7 @@ def to_record(row: dict, image_root: Path | None, image_extension: str, assume_d
         "dna_barcode": dna,
         "dna_bin": first(row, ["dna_bin", "bin", "barcode_index_number"]),
         "specimen_group_id": f"BIOSCAN-5M:{process_id}",
-        "source_split": first(row, ["split", "partition"]),
+        "source_split": first(row, ["source_split", "split", "partition"]),
         "label_quality": "A" if dna and species else ("B" if species else "D"),
     })
     if not record["image_url"] and not record["local_path"]:

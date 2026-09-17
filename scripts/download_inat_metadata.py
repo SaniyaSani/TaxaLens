@@ -58,6 +58,7 @@ def main() -> None:
     parser.add_argument("--archive", help="Use an already downloaded tar.gz instead")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--keep-archive", action="store_true")
+    parser.add_argument("--allow-bulk-download", action="store_true", help="Explicitly allow the complete worldwide metadata archive; NOT needed for bounded PoC")
     args = parser.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -66,6 +67,8 @@ def main() -> None:
         if archive.exists() and not args.force:
             print(f"reuse existing archive: {archive}")
         else:
+            if not args.allow_bulk_download:
+                raise SystemExit("STOP: this is the complete worldwide iNaturalist metadata bundle. For PoC use run_multisource_poc_v09.py --stage download --source inat --reuse-existing-bioscan. Bulk mode requires explicit --allow-bulk-download after checking storage.")
             print(f"downloading {args.url}")
             download(args.url, archive)
     paths = extract_selected(archive, out_dir)

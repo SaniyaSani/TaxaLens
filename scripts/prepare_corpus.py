@@ -11,6 +11,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from recovery_support import nonempty
 
 
 def resolve(value: str | None) -> str | None:
@@ -87,6 +89,25 @@ def main() -> None:
     output_dir = Path(resolve(config.get("output_dir", "data/corpus")))
     output_dir.mkdir(parents=True, exist_ok=True)
     ingest_commands, manifests = source_commands(config, output_dir)
+    if not args.dry_run:
+        needed = list(config.get("sources", {}).get("normalized_manifests", []))
+        if args.stage in {"all", "ingest"}:
+            for command in ingest_commands:
+                for flag in ("--observations", "--photos", "--taxa", "--observers", "--metadata", "--occurrence", "--multimedia", "--input"):
+                    if flag in command:
+                        needed.append(command[command.index(flag) + 1])
+        else:
+            needed.extend(manifests)
+        missing = [str(resolve(p)) for p in dict.fromkeys(needed) if not nonempty(resolve(p))]
+        dissco_path = config.get("sources", {}).get("dissco", {}).get("input")
+        if dissco_path and config["sources"]["dissco"].get("enabled"):
+            checkpoint = Path(resolve(dissco_path) + ".checkpoint.json")
+            if checkpoint.exists() and not json.loads(checkpoint.read_text()).get("finished"):
+                raise SystemExit("STOP: DiSSCo download checkpoint is unfinished. Rerun its download cell before ingest.")
+        if missing:
+            raise SystemExit("STOP: source preparation is not complete. No corpus was overwritten.\nMissing/empty:\n  "
+                             + "\n  ".join(missing)
+                             + "\nRun the corresponding download cells first (BIOSCAN top-up is independent).")
     if args.stage in {"all", "ingest"}:
         for command in ingest_commands:
             run(command, args.dry_run)

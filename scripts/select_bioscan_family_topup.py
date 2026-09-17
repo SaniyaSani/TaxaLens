@@ -94,7 +94,8 @@ def main() -> None:
 
     # Count diversity strata only for the still-missing family quotas.
     bucket_counts: dict[str, Counter] = defaultdict(Counter)
-    for chunk in iter_table(args.metadata, args.chunksize):
+    for chunk_number, chunk in enumerate(iter_table(args.metadata, args.chunksize), 1):
+        print(f"BIOSCAN metadata: counting chunk {chunk_number} ({len(chunk)} rows)", flush=True)
         for row in chunk.to_dict(orient="records"):
             family_key = family_name(row).casefold()
             if deficits.get(family_key, 0) <= 0 or process_id(row) in base_ids:
@@ -118,7 +119,8 @@ def main() -> None:
 
     heaps: dict[tuple[str, str], list[tuple[int, str, dict]]] = defaultdict(list)
     if budgets:
-        for chunk in iter_table(args.metadata, args.chunksize):
+        for chunk_number, chunk in enumerate(iter_table(args.metadata, args.chunksize), 1):
+            print(f"BIOSCAN metadata: selecting chunk {chunk_number} ({len(chunk)} rows)", flush=True)
             for row in chunk.to_dict(orient="records"):
                 family_key = family_name(row).casefold()
                 identifier = process_id(row)

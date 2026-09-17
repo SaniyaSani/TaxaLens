@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Iterator
@@ -92,9 +93,20 @@ def iter_objects(path: str | Path, chunksize: int) -> Iterator[dict]:
 
 
 def specimen_rows(obj: dict, assume_diptera: bool) -> list[dict]:
+    # /full wraps specimen, media and annotations separately. Never interpret
+    # annotation history or specimen metadata links as image objects.
+    envelope = obj.get("data", {})
+    attributes = envelope.get("attributes", {}) if isinstance(envelope, dict) else {}
+    if isinstance(attributes, dict) and "digitalSpecimen" in attributes:
+        obj = {"id": envelope.get("id", ""), "source_url": envelope.get("id", ""),
+               **attributes["digitalSpecimen"],
+               "digitalMedia": [m.get("digitalMediaObject", m) for m in attributes.get("digitalMedia", []) if isinstance(m, dict)]}
     # Flattened exports use direct column lookup; nested openDS uses recursive lookup.
     order = first(obj, ["order", "ods:order"]) or pick(obj, "order")
     if not assume_diptera and order.lower() != "diptera":
+        return []
+    basis = pick(obj, "basisOfRecord")
+    if basis and basis.replace("_", "").casefold() != "preservedspecimen":
         return []
     specimen_id = first(obj, ["id", "digital_specimen_id", "specimen_id", "doi"]) or pick(
         obj, "digitalSpecimenId", "physicalSpecimenId", "catalogNumber", "occurrenceID", "doi"
@@ -140,14 +152,14 @@ def specimen_rows(obj: dict, assume_diptera: bool) -> list[dict]:
         media_type = first(item, ["type", "mediatype", "format"]) or pick(item, "type", "mediaType", "format")
         if media_type and not any(token in media_type.lower() for token in ("image", "stillimage", "jpeg", "jpg", "png", "webp")):
             continue
-        url = first(item, ["accessuri", "contenturl", "image_url", "url", "identifier"]) or pick(
-            item, "accessURI", "contentUrl", "downloadURL", "identifier"
-        )
-        if not url.startswith(("http://", "https://")):
+        url = (first(item, ["accessuri", "contenturl", "image_url", "url"])
+               or pick(item, "accessURI") or pick(item, "contentUrl") or pick(item, "downloadURL")
+               or first(item, ["identifier"]) or pick(item, "identifier"))
+        if not url.startswith(("http://", "https://")) or re.match(r"https?://(?:dx\.)?doi\.org/", url):
             continue
         record = dict(base)
         record.update({
-            "source_image_id": first(item, ["media_id", "id"]) or pick(item, "digitalMediaId", "mediaID") or url,
+            "source_image_id": first(item, ["media_id", "id", "@id"]) or pick(item, "digitalMediaId", "mediaID") or url,
             "image_url": url,
             "image_license": first(item, ["license", "licence", "rights"]) or pick(item, "license", "rights", "rightsURI"),
             "copyright_holder": first(item, ["rightsholder", "copyright_holder"]) or pick(item, "rightsHolder", "creator"),
@@ -179,6 +191,8 @@ def main() -> None:
                 buffer = []
                 print(f"wrote DiSSCo images: {writer.rows_written}", end="\r")
         writer.write(buffer)
+        if writer.rows_written == 0:
+            raise SystemExit("STOP: DiSSCo export has no eligible image rows. Previous manifest retained; inspect the export/filters, do not run assemble.")
         print(f"\nwrote {writer.rows_written} DiSSCo rows -> {args.out}")
 
 

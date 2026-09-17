@@ -293,6 +293,8 @@ def main() -> None:
                         writer.write(output)
                         output = []
                 writer.write(output)
+            if writer.rows_written == 0:
+                raise SystemExit("STOP: no eligible iNaturalist image rows; previous manifest retained")
             print(f"\nwrote {writer.rows_written} iNaturalist image rows -> {args.out}")
 
 

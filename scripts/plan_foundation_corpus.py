@@ -172,7 +172,9 @@ def main() -> None:
                 stratum_budgets[(source, taxon)] = value
 
     heaps: dict[tuple[str, str], list[tuple[int, str, dict]]] = defaultdict(list)
-    direct_writer = ManifestWriter(args.out) if full_corpus else None
+    plan_out = Path(args.out)
+    pending_out = plan_out.with_name(plan_out.stem + ".pending" + plan_out.suffix)
+    direct_writer = ManifestWriter(pending_out) if full_corpus else None
     selected_direct = 0
     eligible_seen = 0
     selected_by_source: Counter = Counter()
@@ -220,7 +222,7 @@ def main() -> None:
                 selected_by_taxon[f"{source}\x1f{taxon}"] += 1
                 selected_by_family[record["family"]] += 1
         selected.sort(key=lambda row: (row["source"], sampling_bucket(row, rank), row["record_id"]))
-        with ManifestWriter(args.out) as writer:
+        with ManifestWriter(pending_out) as writer:
             for start in range(0, len(selected), args.chunksize):
                 writer.write(selected[start:start + args.chunksize])
     selected_total = selected_direct if full_corpus else len(selected)
@@ -255,6 +257,9 @@ def main() -> None:
             "training plan is missing required target families: "
             + ", ".join(missing_required_families)
         )
+    if selected_total == 0:
+        raise SystemExit("Empty training plan; previous completed plan retained")
+    pending_out.replace(plan_out)
     print(f"training plan -> {args.out}")
 
 
