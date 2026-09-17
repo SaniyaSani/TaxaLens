@@ -1,0 +1,26 @@
+.guide-banner {
+  display: grid; gap: 4px; padding: 14px; margin-bottom: 10px;
+  border-radius: 15px; background: linear-gradient(135deg, var(--sage), #eef5eb);
+}
+.guide-banner strong { font-family: Georgia, serif; font-size: 18px; }
+.guide-banner span { color: var(--muted); font-size: 11px; }
+.candidate-strip { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0; font-size: 11px; color: var(--muted); }
+.candidate-strip b { padding: 5px 8px; border-radius: 999px; background: var(--pink); color: var(--ink); font-family: Georgia, serif; font-size: 12px; }
+.guide-steps { display: grid; gap: 8px; }
+.guide-step { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 11px; border: 1px solid var(--line); border-radius: 14px; background: #fff; cursor: pointer; }
+.guide-step input { margin-top: 3px; accent-color: #52765f; }
+.guide-step span { display: grid; gap: 4px; }
+.guide-step em { font-style: normal; font-size: 12px; line-height: 1.45; }
+.guide-step small { color: var(--muted); line-height: 1.4; }
+.guide-step:has(input:checked) { background: #edf6e9; border-color: #a8c7a5; }
+.stop-box { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #faeee7; color: #674c40; font-size: 12px; line-height: 1.45; }
+.stop-box ul { margin: 7px 0 0; padding-left: 18px; }
+.guide-sources { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.guide-sources p { margin: 8px 0; font-size: 12px; }
+.guide-sources a { color: var(--ink); }
+.source-drawer { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+.source-drawer summary { cursor: pointer; font-size: 12px; font-weight: 800; color: #52765f; }
+.source-drawer #keyFinder { margin-top: 10px; }
+.candidate.selectable { padding: 8px; margin-left: -8px; margin-right: -8px; border-radius: 12px; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+.candidate.selectable:hover, .candidate.selectable:focus { background: #f2f7ef; outline: 2px solid transparent; transform: translateX(2px); }
+.candidate.selectable.selected { background: var(--sage); box-shadow: inset 0 0 0 1px var(--sage2); }

@@ -195,7 +195,30 @@ python scripts/run_multisource_poc_v09.py \
 Команду можно перезапускать. Валидные картинки переиспользуются, битые и незавершённые
 файлы скачиваются снова. Готовые dataset bytes остаются в `~/TaxaLensData`, а не в GitHub.
 
-## Часть 7. Сделать маленький DINOv3 smoke test дома
+## Часть 7. Проверить биологическую пригодность изображений
+
+Перед embeddings обязательно включи GPU и запусти:
+
+```bash
+python scripts/run_multisource_poc_v09.py \
+  --stage quality \
+  --data-root ~/TaxaLensData
+```
+
+Для этапа нужны `torch` и `transformers>=4.56`. OWLv2 ищет мух на неоднородных
+музейных кадрах GBIF/DiSSCo. Кадры без видимой мухи и слишком мелкие экземпляры
+попадают в `training_plan_quality_review.parquet`; исходные JPEG не удаляются.
+Пригодный небольшой экземпляр обрезается в отдельную папку `images_quality_crops`.
+После прерывания повтори ту же команду: готовые checkpoints переиспользуются.
+
+Проверь отчёт и контактный лист:
+
+```text
+~/TaxaLensData/poc_v09/image_quality_report.json
+~/TaxaLensData/poc_v09/image_quality_review_contact_sheet.jpg
+```
+
+## Часть 8. Сделать маленький DINOv3 + BioCLIP smoke test дома
 
 Сначала только один shard примерно на 1,000 записей:
 
@@ -206,10 +229,12 @@ python scripts/run_multisource_poc_v09.py \
   --max-shards 1
 ```
 
-Это проверит доступ к модели, память, GPU/CPU и реальную скорость. Не запускай сразу все 100
-shards, пока первый не завершился с `complete.json`.
+Это проверит один и тот же shard двумя независимыми encoders. Кэш JPEG повторно не
+скачивается. DINOv3 сохраняется в `quality_embedding_shards`, BioCLIP — в
+`quality_embedding_shards_bioclip`; каждый можно безопасно продолжить после отключения.
+Не запускай сразу все shards, пока первый не завершился у обоих encoders с `complete.json`.
 
-## Часть 8. Полный PoC
+## Часть 9. Полный PoC
 
 Когда один shard прошёл нормально:
 
@@ -223,12 +248,13 @@ python scripts/run_multisource_poc_v09.py --stage evaluate --data-root ~/TaxaLen
 
 ```text
 ~/TaxaLensData/models_poc_v09/evaluation_by_source.md
+~/TaxaLensData/models_poc_v09/encoder_comparison.md
 ```
 
-Из него мы перенесём family top-1/top-5, accepted accuracy, accepted coverage и отдельные
-результаты BIOSCAN/iNaturalist/GBIF/DiSSCo в `main.tex`.
+Второй отчёт честно сравнивает DINOv3, BioCLIP и fusion на test specimens. Метрики рода и
+вида помечены как условные; они не выдаются за end-to-end точность всей системы.
 
-## Часть 9. Проверить Genus Key Finder
+## Часть 10. Проверить Genus Key Finder
 
 Он работает отдельно ещё до обучения модели:
 

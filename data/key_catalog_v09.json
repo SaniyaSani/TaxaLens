@@ -26,6 +26,26 @@
       "genera": [],
       "region": "Britain",
       "notes": "A local PDF may be available in the project owner's reference collection."
+    },
+    {
+      "title": "Keys to the Adult Male Chironomidae of Britain and Ireland",
+      "authors": "P. H. Langton & L. C. V. Pinder",
+      "year": 2007,
+      "type": "adult male genus and species keys",
+      "families": ["Chironomidae"],
+      "genera": [],
+      "region": "Britain and Ireland / northern European lead",
+      "url": "https://resjournals.onlinelibrary.wiley.com/doi/10.1111/j.1365-3113.2007.00412_5.x",
+      "notes": "Use only for the matching adult male stage and verify Swiss coverage and later revisions."
+    },
+    {
+      "title": "Chironomidae larvae — European identification guide",
+      "type": "interactive larval genus key",
+      "families": ["Chironomidae"],
+      "genera": [],
+      "region": "Europe",
+      "url": "https://chironomidae-larvae.linnaeus.naturalis.nl/linnaeus_ng/",
+      "notes": "Larval material only; do not apply this key to adults."
     }
   ]
 }

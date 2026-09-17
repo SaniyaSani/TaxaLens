@@ -3,17 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Swiss Diptera ID Workbench</title>
+  <title>TaxaLens · evidence-first Diptera identification</title>
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="/static/key-finder.css" />
+  <link rel="stylesheet" href="/static/key-navigator.css" />
 </head>
 <body>
   <main class="shell">
     <header>
       <div>
-        <p class="eyebrow">SWISS DIPTERA ID WORKBENCH · REAL ML PIPELINE</p>
+        <p class="eyebrow">TAXALENS · SWISS DIPTERA ID WORKBENCH · FIRST MEASURED RUN</p>
         <h1>From specimen image to <em>testable</em> identification.</h1>
-        <p class="lead">DINOv3 whole-fly embeddings + hierarchical classifiers + nearest verified specimens + optional morphology checks.</p>
+        <p class="lead">DINOv3 + BioCLIP evidence, hierarchical predictions, nearest reference specimens and a source-backed morphology navigator.</p>
       </div>
       <div class="badge" id="healthBadge">checking model…</div>
     </header>
@@ -26,20 +27,24 @@
           <img id="preview" alt="preview" hidden />
           <div id="dropText">
             <div class="fly">🪰</div>
-            <strong>Drop a fly image here</strong>
+            <strong>Drop a Diptera image here</strong>
             <span>or tap to choose from camera roll</span>
           </div>
         </label>
         <button id="identifyBtn" disabled>Identify specimen</button>
-        <p class="micro">No mock result: if trained artifacts are missing, the app says so instead of inventing an ID.</p>
+        <p class="micro">Up to 25 MB. The image is processed for this request; no mock result is returned when model artifacts are missing.</p>
       </article>
 
       <article class="card result-card">
         <div class="section-head"><h2>02 · AI pre-identification</h2><span id="acceptedPill" class="pill">awaiting image</span></div>
         <div id="predictionArea" class="empty">Upload an image to calculate a real DINOv3 whole-fly embedding.</div>
         <div class="key-finder-panel">
-          <div class="section-head"><h2>03 · Genus Key Finder</h2><span class="pill">automatic</span></div>
-          <div id="keyFinder" class="empty">After genus candidates appear, TaxaLens will search for identification keys and revisions.</div>
+          <div class="section-head"><h2>03 · Morphology Key Navigator</h2><span class="pill">evidence first</span></div>
+          <div id="keyGuide" class="empty">After genus candidates appear, tap any genus to load its morphology checklist and applicable keys.</div>
+          <details class="source-drawer">
+            <summary>Published keys and revisions</summary>
+            <div id="keyFinder" class="empty">Applicable sources will appear here.</div>
+          </details>
         </div>
       </article>
     </section>
@@ -50,13 +55,13 @@
         <div id="neighbours" class="thumb-grid empty">Nearest neighbours will appear here.</div>
       </article>
       <article class="card">
-        <h2>05 · Verify morphology</h2>
+        <h2>05 · Family morphology notes</h2>
         <div id="diagnostics" class="empty">The workbench will suggest characters to inspect for the leading family.</div>
       </article>
     </section>
 
     <footer>
-      <span>DINOv3 whole-fly backbone</span><span>•</span><span>license-aware training manifest</span><span>•</span><span>human verification first</span>
+      <span>DINOv3 + BioCLIP</span><span>•</span><span>40,274 quality-approved images</span><span>•</span><span>human verification first</span>
     </footer>
   </main>
 <script src="/static/app.js"></script>

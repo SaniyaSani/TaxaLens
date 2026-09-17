@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "disclaimer": "This is a source-backed evidence checklist, not a replacement for a published taxonomic key. A checked item records that the structure is visible; it does not by itself confirm a genus.",
+  "fallback": {
+    "title": "Evidence checklist before using a genus key",
+    "scope": "adult Diptera",
+    "steps": [
+      {"id": "whole", "title": "Whole specimen", "inspect": "Take a sharp dorsal and lateral photograph with the entire body, wing tips and legs visible.", "why": "Body proportions, colour pattern and major setae are lost when appendages are cropped."},
+      {"id": "head", "title": "Head and antenna", "inspect": "Add a close lateral or oblique view of the antenna, eyes, face, palps and mouthparts.", "why": "Many genus keys depend on antennal segments, eye shape and facial characters."},
+      {"id": "wing", "title": "Wing", "inspect": "Photograph one wing flat and in focus, including its base, veins, membrane and margin.", "why": "Venation, setulae and the calypter/squama frequently separate genera."},
+      {"id": "legs", "title": "Legs", "inspect": "Show tibial spurs, apical combs and the last tarsal segments at high magnification.", "why": "Leg armature and pulvilli can be diagnostic but are rarely resolved in a habitus image."},
+      {"id": "terminalia", "title": "Terminalia", "inspect": "If permitted, add a correctly oriented macro or microscope image of the terminalia.", "why": "For many small Diptera, a reliable species decision requires sex-specific terminalia."}
+    ],
+    "stop_rules": [
+      "Stop at family or genus when a required structure is hidden, blurred or outside the frame.",
+      "Do not promote a species suggestion solely because its model score is high.",
+      "Use a key whose sex, life stage and geographic scope match the specimen."
+    ],
+    "sources": [
+      {"title": "Manual of European Diptera", "authors": "L. Papp & B. Darvas (eds.)", "scope": "European family and genus treatments", "url": "https://www.sciencedirect.com/bookseries/science-herald"}
+    ]
+  },
+  "families": {
+    "Chironomidae": {
+      "title": "Adult Chironomidae: what to inspect before comparing genera",
+      "scope": "adult specimen; male and female keys are not interchangeable",
+      "steps": [
+        {"id": "stage-sex", "title": "1. Confirm life stage and sex", "inspect": "Record adult/larva/pupa and male/female. In an adult, photograph the antenna and terminalia clearly.", "why": "The major Chironomidae keys are stage- and often sex-specific; adult male terminalia carry much of the genus/species evidence."},
+        {"id": "head-antenna", "title": "2. Head and antenna", "inspect": "Capture the antennal flagellum and plume, eyes in dorsal view, palps and mouthparts. Do not infer antennal ratios from a blurred oblique image.", "why": "Antenna, eye extension and palpal characters are repeatedly used in adult genus diagnoses."},
+        {"id": "wing", "title": "3. Wing and squama", "inspect": "Flatten one wing. Resolve membrane macrotrichia, vein setation and course, costa ending, anal lobe, and whether the squama bears a fringe.", "why": "These characters help route an adult through subfamily and genus keys."},
+        {"id": "thorax", "title": "4. Thoracic setae", "inspect": "Make a dorsal close-up showing acrostichal, dorsocentral and prealar setae and the scutellum.", "why": "Setal arrangement is useful, but usually invisible in a whole-body phone photograph."},
+        {"id": "legs", "title": "5. Tibiae and tarsi", "inspect": "Photograph the apices of all tibiae, including combs/spurs, and the tarsal claws, pulvilli and empodium.", "why": "Leg-armature states distinguish several adult lineages and genera."},
+        {"id": "hypopygium", "title": "6. Male hypopygium", "inspect": "For a male, obtain a correctly oriented microscope image or slide preparation showing gonostylus, gonocoxite and volsellae.", "why": "Many adult male genera and most difficult species cannot be tested responsibly without hypopygial characters."},
+        {"id": "alternate-stage", "title": "7. Add another life stage or DNA when possible", "inspect": "Preserve pupal exuviae/larva with the adult, or obtain a COI barcode for a voucher.", "why": "Associated stages and DNA can resolve cases in which adult habitus is convergent or species limits are cryptic."}
+      ],
+      "stop_rules": [
+        "If sex or life stage is unknown, do not enter a sex- or stage-specific key.",
+        "If wing, tibial apex or terminalia cannot be inspected, treat the model genus as a hypothesis only.",
+        "For a species claim, require the characters stated in the applicable revision; many Chironomidae are not identifiable from a single habitus photo.",
+        "When morphology and the image model disagree, retain both candidates and request specialist or DNA evidence."
+      ],
+      "sources": [
+        {"title": "The adult males of Orthocladiinae of the Holarctic region — keys and diagnoses", "authors": "P. S. Cranston, D. R. Oliver & O. A. Sæther", "year": 1989, "scope": "adult male Orthocladiinae", "url": "https://europeanjournaloftaxonomy.eu/index.php/ejt/article/view/3157"},
+        {"title": "The adult males of Chironominae of the Holarctic region — keys and diagnoses", "authors": "P. S. Cranston, M. E. Dillon, L. C. V. Pinder & F. Reiss", "year": 1989, "scope": "adult male Chironominae", "url": "https://www.mapress.com/zt/article/view/55286"},
+        {"title": "Keys to the Adult Male Chironomidae of Britain and Ireland", "authors": "P. H. Langton & L. C. V. Pinder", "year": 2007, "scope": "adult males; Britain and Ireland, with northern European relevance", "url": "https://resjournals.onlinelibrary.wiley.com/doi/10.1111/j.1365-3113.2007.00412_5.x"},
+        {"title": "Chironomidae larvae — European identification guide", "scope": "larvae; Europe; use only for larval material", "url": "https://chironomidae-larvae.linnaeus.naturalis.nl/linnaeus_ng/"}
+      ]
+    }
+  }
+}
