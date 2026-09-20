@@ -1,0 +1,6 @@
+# Compatibility bounds for ScienceCluster
+transformers>=4.56,<5
+click>=8,<8.4,!=8.3.0
+# ScienceCluster: data preparation, embeddings and training
+-r requirements-embeddings.txt
+-r requirements-downloaders.txt
