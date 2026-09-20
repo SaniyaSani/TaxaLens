@@ -16,3 +16,6 @@ models/*.json
 *.zip
 !data/morphology_rules.json
 !data/key_references.json
+
+# ScienceCluster job logs
+logs/
