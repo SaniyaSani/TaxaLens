@@ -83,7 +83,34 @@ def sampling_bucket(row: dict) -> tuple[str, str]:
     return "", ""
 
 
-def is_eligible(row: dict, min_rank: str) -> bool:
+def load_family_filter(value: str | Path | None) -> tuple[list[str], set[str]]:
+    """Load an optional versioned family scope with case-insensitive matching."""
+    if not value:
+        return [], set()
+    path = Path(value).expanduser().resolve()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise SystemExit(f"target family file not found: {path}") from exc
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"invalid target family JSON {path}: {exc}") from exc
+    values = payload.get("families", []) if isinstance(payload, dict) else payload
+    if not isinstance(values, list):
+        raise SystemExit(f"target family file must contain a families list: {path}")
+    names = [str(value).strip() for value in values if str(value).strip()]
+    keys = [name.casefold() for name in names]
+    if not names:
+        raise SystemExit(f"target family list is empty: {path}")
+    if len(keys) != len(set(keys)):
+        raise SystemExit(f"target family list contains duplicate names: {path}")
+    return names, set(keys)
+
+
+def is_eligible(
+    row: dict,
+    min_rank: str,
+    target_families: set[str] | None = None,
+) -> bool:
     if text(row, "order", "taxon_order").casefold() != "diptera":
         return False
     if not text(row, "processid", "process_id", "sampleid", "sample_id"):
@@ -99,7 +126,9 @@ def is_eligible(row: dict, min_rank: str) -> bool:
         "genus": bool(genus),
         "species": bool(species),
     }
-    return requirements[min_rank]
+    return requirements[min_rank] and (
+        not target_families or family.casefold() in target_families
+    )
 
 
 def stable_score(seed: int, process_id: str) -> int:
@@ -222,6 +251,10 @@ def main() -> None:
     parser.add_argument("--max-records", type=int, default=30_000)
     parser.add_argument("--max-per-taxon", type=int, default=500)
     parser.add_argument("--min-rank", choices=("family", "genus", "species"), default="family")
+    parser.add_argument(
+        "--families-file",
+        help="Optional JSON family scope; only matching Diptera are eligible",
+    )
     parser.add_argument("--split-targets", help="JSON path or comma list such as pretrain=12000,train=12000,...")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--chunksize", type=int, default=100_000)
@@ -232,6 +265,8 @@ def main() -> None:
     if args.max_per_taxon <= 0:
         raise SystemExit("--max-per-taxon must be positive")
 
+    target_family_names, target_family_keys = load_family_filter(args.families_file)
+
     split_targets = parse_split_targets(args.split_targets)
     split_counts: Counter = Counter()
     bucket_counts: dict[str, Counter] = defaultdict(Counter)
@@ -240,7 +275,7 @@ def main() -> None:
     # Pass 1: count only eligible Diptera strata.
     for chunk in iter_table(args.metadata, args.chunksize):
         for row in chunk.to_dict(orient="records"):
-            if not is_eligible(row, args.min_rank):
+            if not is_eligible(row, args.min_rank, target_family_keys):
                 continue
             split = text(row, "split", "source_split")
             rank, bucket = sampling_bucket(row)
@@ -266,7 +301,7 @@ def main() -> None:
     considered = 0
     for chunk in iter_table(args.metadata, args.chunksize):
         for row in chunk.to_dict(orient="records"):
-            if not is_eligible(row, args.min_rank):
+            if not is_eligible(row, args.min_rank, target_family_keys):
                 continue
             split = text(row, "split", "source_split")
             rank, bucket_value = sampling_bucket(row)
@@ -307,6 +342,7 @@ def main() -> None:
         "min_rank": args.min_rank,
         "seed": args.seed,
         "max_per_taxon": args.max_per_taxon,
+        "target_families": target_family_names,
         "available_by_split": dict(split_counts),
         "budget_by_split": split_budgets,
         "selected_by_split": dict(selected_splits),

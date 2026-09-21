@@ -36,10 +36,11 @@ family → conditional genus → conditional species
 проверки увеличивай `PER_FAMILY` постепенно; для большого корпуса используй
 официальные Open Data tables и v0.3 corpus adapters.
 
-Актуальные 20 target families находятся в `configs/target_diptera_families.json`:
+Legacy v0.9 target families находятся в `configs/target_diptera_families.json`:
 исходные 18 MicroDiptera плюс Muscidae и Tachinidae. Старый файл
 `configs/microdiptera_families.json` сохранён только для совместимости и содержит
-тот же расширенный список.
+тот же расширенный список. Для v1.0 scale-up используется отдельный Swiss-28
+scope `configs/target_diptera_families_v10.json`.
 
 ## Локальный запуск
 

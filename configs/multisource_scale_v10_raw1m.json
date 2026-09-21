@@ -1,7 +1,7 @@
 {
-  "profile": "taxalens-multisource-v1.0-raw1m",
+  "profile": "taxalens-multisource-v1.0-raw1m-swiss28",
   "run": {
-    "id": "v10_raw1m",
+    "id": "v10_raw1m_swiss28",
     "bioscan_tag": "300k"
   },
   "acquisition": {
@@ -13,7 +13,7 @@
     "max_per_taxon": 500,
     "min_rank": "family"
   },
-  "target_families_file": "configs/target_diptera_families.json",
+  "target_families_file": "configs/target_diptera_families_v10.json",
   "required_families": ["Muscidae", "Tachinidae"],
   "bioscan_family_topup": {
     "families": ["Muscidae", "Tachinidae"],

@@ -19,6 +19,20 @@
 Мы начинаем только с `raw200k`. Переход к 500k и затем к 1M происходит после
 проверки отчётов и качества предыдущего gate.
 
+## Версионированный Swiss-28 scope
+
+Все v1.0-профили используют отдельный файл
+`configs/target_diptera_families_v10.json` с **28 целевыми семействами**.
+Это исходное ядро из 20 семейств плюс:
+
+- `Culicidae`, `Syrphidae`, `Simuliidae`, `Anthomyiidae`;
+- `Dolichopodidae`, `Empididae`, `Hybotidae`, `Calliphoridae`.
+
+Legacy v0.9 по-прежнему читает `configs/target_diptera_families.json` с 20
+семействами, поэтому прежний результат остаётся воспроизводимым. В v1.0 уже
+сама BIOSCAN-выборка ограничена Swiss-28: её 60k изображений не расходуются на
+семейства, которые затем всё равно были бы отброшены стадией `plan`.
+
 ## Где что хранится
 
 | Содержимое | Путь | Почему |
@@ -26,9 +40,9 @@
 | Код | `~/projects/TaxaLens` | маленький, версионируемый |
 | Общие исходные metadata | `/scratch/$USER/taxalens/source_cache` | iNaturalist и GBIF не скачиваются заново для каждого gate |
 | Общий JPEG cache | `/scratch/$USER/taxalens/image_cache` | повторно использует уже скачанные изображения |
-| Результаты 200k | `/scratch/$USER/taxalens/v10_raw200k` | отдельная воспроизводимая попытка |
-| Результаты 500k | `/scratch/$USER/taxalens/v10_raw500k` | не смешивается с 200k |
-| Результаты 1M | `/scratch/$USER/taxalens/v10_raw1m` | не смешивается с предыдущими |
+| Результаты 200k | `/scratch/$USER/taxalens/v10_raw200k_swiss28` | отдельная воспроизводимая попытка |
+| Результаты 500k | `/scratch/$USER/taxalens/v10_raw500k_swiss28` | не смешивается с 200k |
+| Результаты 1M | `/scratch/$USER/taxalens/v10_raw1m_swiss28` | не смешивается с предыдущими |
 | Принятые модели и отчёты | `/shares/hawlitschek.ieu.uzh/TaxaLens/runs/v1.0/...` | сохраняются после успешного gate; изображения туда не копируем |
 
 `/scratch` — рабочее, временное хранилище. Неактивные файлы могут удаляться
@@ -54,7 +68,7 @@ cd ~/projects/TaxaLens
 mkdir -p logs
 
 export CONFIG="configs/multisource_scale_v10_raw200k.json"
-export DATA_ROOT="/scratch/$USER/taxalens/v10_raw200k"
+export DATA_ROOT="/scratch/$USER/taxalens/v10_raw200k_swiss28"
 export SOURCE_ROOT="/scratch/$USER/taxalens/source_cache"
 export IMAGE_ROOT="/scratch/$USER/taxalens/image_cache"
 ```
@@ -98,6 +112,9 @@ sbatch --export=ALL,STAGE=prefetch slurm/10_scale_stage.sbatch
 ```
 
 ### 2. BIOSCAN 60k
+
+Сначала из metadata выбираются только представители Swiss-28, и лишь после
+этого скачиваются соответствующие изображения. Это не 60k случайных Diptera.
 
 ```bash
 sbatch --export=ALL,STAGE=bioscan slurm/10_scale_stage.sbatch
@@ -298,14 +315,14 @@ retrieval index и отчёты по источникам.
 
 ```bash
 export CONFIG="configs/multisource_scale_v10_raw500k.json"
-export DATA_ROOT="/scratch/$USER/taxalens/v10_raw500k"
+export DATA_ROOT="/scratch/$USER/taxalens/v10_raw500k_swiss28"
 ```
 
 После успешного 500k gate аналогично:
 
 ```bash
 export CONFIG="configs/multisource_scale_v10_raw1m.json"
-export DATA_ROOT="/scratch/$USER/taxalens/v10_raw1m"
+export DATA_ROOT="/scratch/$USER/taxalens/v10_raw1m_swiss28"
 ```
 
 ## Что сохранить в `/shares`

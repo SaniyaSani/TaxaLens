@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from select_bioscan_diptera import load_family_filter
+
 ROOT = Path(__file__).resolve().parents[1]
 SAFE_TAG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
@@ -80,6 +82,7 @@ def verify_existing_selection(
     max_per_taxon: int,
     min_rank: str,
     seed: int,
+    target_families: list[str] | None = None,
 ) -> None:
     """Refuse to reuse a filename whose saved selection settings differ."""
     if not report_path.is_file():
@@ -96,6 +99,7 @@ def verify_existing_selection(
         "max_per_taxon": max_per_taxon,
         "min_rank": min_rank,
         "seed": seed,
+        "target_families": list(target_families or []),
     }
     mismatched = {
         key: {"saved": report.get(key), "requested": value}
@@ -121,6 +125,10 @@ def main() -> None:
     )
     parser.add_argument("--max-per-taxon", type=int, default=500)
     parser.add_argument("--min-rank", choices=("family", "genus", "species"), default="family")
+    parser.add_argument(
+        "--families-file",
+        help="Optional versioned JSON scope; restrict the selection to these families",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--archive-config", default="configs/bioscan_archives_v06.json")
     parser.add_argument("--skip-metadata-download", action="store_true")
@@ -138,6 +146,16 @@ def main() -> None:
         raise SystemExit("--max-per-taxon must be positive")
 
     tag = validate_tag(args.dataset_tag or count_tag(args.max_records))
+    families_file = None
+    target_families: list[str] = []
+    if args.families_file:
+        candidate = Path(args.families_file).expanduser()
+        families_file = (
+            candidate.resolve()
+            if candidate.is_absolute()
+            else (ROOT / candidate).resolve()
+        )
+        target_families, _ = load_family_filter(families_file)
     layout = dataset_paths(args.root, tag)
     store = layout["root"]
     store.mkdir(parents=True, exist_ok=True)
@@ -148,7 +166,7 @@ def main() -> None:
     print("BIOSCAN metadata:", metadata, flush=True)
 
     if not layout["selection"].exists():
-        run(
+        selection_command = [
             sys.executable,
             "scripts/select_bioscan_diptera.py",
             "--metadata", str(metadata),
@@ -159,7 +177,10 @@ def main() -> None:
             "--max-per-taxon", str(args.max_per_taxon),
             "--min-rank", args.min_rank,
             "--seed", str(args.seed),
-        )
+        ]
+        if families_file:
+            selection_command.extend(["--families-file", str(families_file)])
+        run(*selection_command)
     else:
         verify_existing_selection(
             layout["selection"],
@@ -168,6 +189,7 @@ def main() -> None:
             max_per_taxon=args.max_per_taxon,
             min_rank=args.min_rank,
             seed=args.seed,
+            target_families=target_families,
         )
         print(
             "Selection already exists; keeping it for reproducibility:",
@@ -183,7 +205,12 @@ def main() -> None:
         sys.executable,
         "scripts/download_bioscan_subset.py",
         "--selection", str(layout["selection"]),
-        "--archive-config", str((ROOT / args.archive_config).resolve() if not Path(args.archive_config).is_absolute() else Path(args.archive_config).resolve()),
+        "--archive-config",
+        str(
+            (ROOT / args.archive_config).resolve()
+            if not Path(args.archive_config).is_absolute()
+            else Path(args.archive_config).resolve()
+        ),
         "--image-dir", str(layout["images"]),
         "--out-manifest", str(layout["downloaded"]),
         "--report", str(layout["download_report"]),

@@ -91,6 +91,49 @@ def test_metadata_first_selector_is_exact_balanced_and_deterministic(tmp_path: P
     assert "NOT-A-FLY" not in set(selected["processid"])
 
 
+def test_metadata_selector_restricts_bioscan_to_versioned_family_scope(tmp_path: Path):
+    rows = []
+    for index, family in enumerate(("Phoridae", "Sciaridae", "Syrphidae") * 8):
+        rows.append({
+            "processid": f"SCOPE-{index:03d}",
+            "order": "Diptera",
+            "family": family,
+            "genus": f"Genus{index}",
+            "species": f"Genus{index} species",
+            "split": "train",
+            "chunk": "00",
+        })
+    metadata = tmp_path / "metadata.csv"
+    pd.DataFrame(rows).to_csv(metadata, index=False)
+    family_scope = tmp_path / "families.json"
+    family_scope.write_text(
+        json.dumps({"families": ["Phoridae", "Syrphidae"]}),
+        encoding="utf-8",
+    )
+    selected_path = tmp_path / "selected.csv"
+    report_path = tmp_path / "report.json"
+
+    run_script(
+        "select_bioscan_diptera.py",
+        "--metadata", metadata,
+        "--out", selected_path,
+        "--report", report_path,
+        "--image-dir", tmp_path / "images",
+        "--max-records", 8,
+        "--max-per-taxon", 8,
+        "--split-targets", "train=8",
+        "--families-file", family_scope,
+        "--chunksize", 7,
+    )
+
+    selected = pd.read_csv(selected_path)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert len(selected) == 8
+    assert set(selected["family"]) <= {"Phoridae", "Syrphidae"}
+    assert "Sciaridae" not in set(selected["family"])
+    assert report["target_families"] == ["Phoridae", "Syrphidae"]
+
+
 def test_selective_downloader_reads_only_chosen_local_zip_members_and_resumes(tmp_path: Path):
     selection_rows = [
         {"processid": "P-1", "archive_group": "pretrain", "archive_member": "pretrain/aa/P-1.jpg"},
@@ -138,4 +181,3 @@ def test_selective_downloader_reads_only_chosen_local_zip_members_and_resumes(tm
     payload = json.loads(report.read_text(encoding="utf-8"))
     assert payload["downloaded_now"] == 0
     assert payload["skipped_existing"] == 3
-

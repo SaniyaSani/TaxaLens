@@ -26,6 +26,7 @@ from recovery_support import (
     reusable_topup,
 )
 from run_bioscan import count_tag, validate_tag, verify_existing_selection
+from select_bioscan_diptera import load_family_filter
 
 EXPECTED_SOURCES = ("BIOSCAN-5M", "iNaturalist", "GBIF", "DiSSCo")
 SAFE_COMPONENT = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -66,6 +67,15 @@ def safe_component(value: object, label: str) -> str:
             "(letters, digits, dot, underscore or hyphen)"
         )
     return text
+
+
+def target_family_scope(profile: dict) -> tuple[Path, list[str]]:
+    value = str(profile.get("target_families_file", "")).strip()
+    if not value:
+        raise SystemExit("scale profile must define target_families_file")
+    path = resolve_profile_path(value)
+    names, _ = load_family_filter(path)
+    return path, names
 
 
 def validate_profile(profile: dict) -> None:
@@ -118,6 +128,7 @@ def validate_profile(profile: dict) -> None:
                 f"{source} target {normalized_targets[source]:,} exceeds the "
                 f"bounded API safety cap {POC_API_LIMIT:,}; use bulk/download mode"
             )
+    target_family_scope(profile)
 
 
 def bioscan_tag(profile: dict) -> str:
@@ -261,6 +272,7 @@ def ensure_run_identity(
 
 def doctor(layout: dict[str, Path], profile: dict) -> int:
     total_label = f"{int(profile['total_images']):,} training plan"
+    family_file, family_names = target_family_scope(profile)
     checks = {
         "BIOSCAN selection": layout["bioscan_selection"],
         "BIOSCAN manifest": layout["bioscan_manifest"],
@@ -281,7 +293,7 @@ def doctor(layout: dict[str, Path], profile: dict) -> int:
         "shard index": layout["shards"] / "shards.json",
         "trained classifiers": layout["models"] / "classifiers.joblib",
         "genus key catalog": ROOT / "data" / "key_catalog_v09.json",
-        "20-family scope": ROOT / "configs" / "target_diptera_families.json",
+        f"{len(family_names)}-family scope": family_file,
     }
     missing = 0
     print(f"Run: {profile['run']['id']} | raw target: {int(profile['total_images']):,}")
@@ -324,6 +336,7 @@ def checkpoint_bioscan(layout: dict[str, Path]) -> None:
 def run_bioscan_stage(layout: dict[str, Path], profile: dict, dry_run: bool) -> None:
     target = int(profile["source_targets"]["BIOSCAN-5M"])
     settings = profile.get("bioscan", {})
+    family_file, _ = target_family_scope(profile)
     command = [
         sys.executable,
         "scripts/run_bioscan.py",
@@ -333,12 +346,14 @@ def run_bioscan_stage(layout: dict[str, Path], profile: dict, dry_run: bool) -> 
         "--max-per-taxon", str(int(settings.get("max_per_taxon", 500))),
         "--min-rank", str(settings.get("min_rank", "family")),
         "--seed", str(int(profile.get("seed", 42))),
+        "--families-file", str(family_file),
     ]
     run(command, dry_run)
 
 
 def verify_bioscan_selection(layout: dict[str, Path], profile: dict) -> None:
     settings = profile.get("bioscan", {})
+    _, target_families = target_family_scope(profile)
     verify_existing_selection(
         layout["bioscan_selection"],
         layout["bioscan_selection_report"],
@@ -346,6 +361,7 @@ def verify_bioscan_selection(layout: dict[str, Path], profile: dict) -> None:
         max_per_taxon=int(settings.get("max_per_taxon", 500)),
         min_rank=str(settings.get("min_rank", "family")),
         seed=int(profile.get("seed", 42)),
+        target_families=target_families,
     )
 
 
@@ -363,6 +379,7 @@ def reuse_existing_bioscan(
         if not layout["bioscan_selection"].exists():
             target = int(profile["source_targets"]["BIOSCAN-5M"])
             settings = profile.get("bioscan", {})
+            family_file, _ = target_family_scope(profile)
             run([
                 sys.executable,
                 "scripts/run_bioscan.py",
@@ -372,6 +389,7 @@ def reuse_existing_bioscan(
                 "--max-per-taxon", str(int(settings.get("max_per_taxon", 500))),
                 "--min-rank", str(settings.get("min_rank", "family")),
                 "--seed", str(int(profile.get("seed", 42))),
+                "--families-file", str(family_file),
                 "--selection-only",
                 "--skip-metadata-download",
             ], dry_run)
