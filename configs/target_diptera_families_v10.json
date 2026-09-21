@@ -1,0 +1,38 @@
+{
+  "scope": "TaxaLens Swiss-priority Diptera 28",
+  "families": [
+    "Phoridae",
+    "Sciaridae",
+    "Cecidomyiidae",
+    "Mycetophilidae",
+    "Chironomidae",
+    "Ceratopogonidae",
+    "Psychodidae",
+    "Sphaeroceridae",
+    "Chloropidae",
+    "Drosophilidae",
+    "Ephydridae",
+    "Agromyzidae",
+    "Milichiidae",
+    "Carnidae",
+    "Anthomyzidae",
+    "Asteiidae",
+    "Fanniidae",
+    "Sepsidae",
+    "Muscidae",
+    "Tachinidae",
+    "Culicidae",
+    "Syrphidae",
+    "Simuliidae",
+    "Anthomyiidae",
+    "Dolichopodidae",
+    "Empididae",
+    "Hybotidae",
+    "Calliphoridae"
+  ],
+  "required_families": [
+    "Muscidae",
+    "Tachinidae"
+  ],
+  "purpose": "Versioned v1.0 Swiss-priority scope: the original 20 difficult Diptera families plus eight ecologically, medically or practically important Swiss families; species training requires curated A/B labels"
+}

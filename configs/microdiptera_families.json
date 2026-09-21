@@ -21,5 +21,5 @@
     "Muscidae",
     "Tachinidae"
   ],
-  "purpose": "Legacy v0.4 filename retained for compatibility; current 20-family target includes Muscidae and Tachinidae; species training requires curated A/B labels"
+  "purpose": "Legacy v0.4/v0.9 20-family target retained for compatibility; v1.0 uses a separate Swiss-28 scope; species training requires curated A/B labels"
 }

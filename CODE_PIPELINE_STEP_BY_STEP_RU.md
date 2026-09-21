@@ -151,10 +151,13 @@ python scripts/run_multisource_poc_v09.py \
 
 ## Часть 5. Сделать единый корпус ровно на 100k
 
-Конфигурация `configs/target_diptera_families.json` содержит 20 целевых семейств:
+Legacy-конфигурация v0.9 `configs/target_diptera_families.json` содержит 20 целевых семейств:
 18 прежних MicroDiptera плюс **Muscidae** и **Tachinidae**. На стадии `plan`
 данные всех четырёх источников фильтруются по этому списку; отсутствие Muscidae
 или Tachinidae считается ошибкой валидации, а не замалчивается.
+
+Новый ScienceCluster v1.0 workflow использует отдельный список Swiss-28 в
+`configs/target_diptera_families_v10.json`; эти команды v0.9 не меняются.
 
 Команды выполняем по одной:
 

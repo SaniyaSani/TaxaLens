@@ -11,10 +11,14 @@ Hugging Face ZeroGPU Space. Посетитель загружает фотогр
 род, чтобы открыть morphology navigator и опубликованные ключи. Однократная
 инструкция и автоматический скрипт находятся в `ZEROGPU_DEPLOY_RU.md`.
 
-Биологический scope теперь содержит **20 целевых семейств Diptera**: исходные
+Legacy v0.9 scope содержит **20 целевых семейств Diptera**: исходные
 18 MicroDiptera плюс **Muscidae** и **Tachinidae**. Единый список находится в
 `configs/target_diptera_families.json`; `plan` применяет его ко всем четырём
 источникам и отдельно проверяет присутствие Muscidae и Tachinidae.
+
+ScienceCluster v1.0 scale-up использует отдельный версионированный Swiss-28
+scope из `configs/target_diptera_families_v10.json`; старый список v0.9 не
+изменяется. Пошаговый запуск описан в `SCIENCECLUSTER_SCALE_V10_RU.md`.
 
 ```text
 FULL IMAGE -> DINOv3 ViT-B/16 -> family -> top genera -> selective species

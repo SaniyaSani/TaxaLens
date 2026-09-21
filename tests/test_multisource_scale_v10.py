@@ -13,17 +13,17 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 CONFIGS = {
     "multisource_scale_v10_raw200k.json": (
-        "v10_raw200k",
+        "v10_raw200k_swiss28",
         200_000,
         {"BIOSCAN-5M": 60_000, "iNaturalist": 60_000, "GBIF": 50_000, "DiSSCo": 30_000},
     ),
     "multisource_scale_v10_raw500k.json": (
-        "v10_raw500k",
+        "v10_raw500k_swiss28",
         500_000,
         {"BIOSCAN-5M": 150_000, "iNaturalist": 150_000, "GBIF": 125_000, "DiSSCo": 75_000},
     ),
     "multisource_scale_v10_raw1m.json": (
-        "v10_raw1m",
+        "v10_raw1m_swiss28",
         1_000_000,
         {"BIOSCAN-5M": 300_000, "iNaturalist": 300_000, "GBIF": 250_000, "DiSSCo": 150_000},
     ),
@@ -66,6 +66,36 @@ def test_scale_profiles_define_the_three_monotonic_gates():
         }
         assert all(targets[source] > previous[source] for source in targets)
         previous = targets
+
+
+def test_v10_uses_versioned_swiss_28_scope_without_changing_v09():
+    expected_additions = {
+        "Culicidae",
+        "Syrphidae",
+        "Simuliidae",
+        "Anthomyiidae",
+        "Dolichopodidae",
+        "Empididae",
+        "Hybotidae",
+        "Calliphoridae",
+    }
+    scope_path = ROOT / "configs/target_diptera_families_v10.json"
+    scope = json.loads(scope_path.read_text(encoding="utf-8"))
+    families = scope["families"]
+    assert len(families) == 28
+    assert len({family.casefold() for family in families}) == 28
+    assert expected_additions <= set(families)
+    assert scope["required_families"] == ["Muscidae", "Tachinidae"]
+
+    for name in CONFIGS:
+        assert profile(name)["target_families_file"] == (
+            "configs/target_diptera_families_v10.json"
+        )
+
+    legacy = json.loads(
+        (ROOT / "configs/target_diptera_families.json").read_text(encoding="utf-8")
+    )
+    assert len(legacy["families"]) == 20
 
 
 def test_scale_paths_isolate_outputs_but_share_raw_and_image_caches(tmp_path):
@@ -125,6 +155,7 @@ def test_bioscan_runner_refuses_reusing_a_tag_with_different_settings(tmp_path):
         "max_per_taxon": 500,
         "min_rank": "family",
         "seed": 42,
+        "target_families": [],
     }), encoding="utf-8")
     with pytest.raises(SystemExit, match="settings differ"):
         bioscan.verify_existing_selection(
@@ -134,6 +165,30 @@ def test_bioscan_runner_refuses_reusing_a_tag_with_different_settings(tmp_path):
             max_per_taxon=500,
             min_rank="family",
             seed=42,
+        )
+
+
+def test_bioscan_runner_refuses_a_changed_family_scope(tmp_path):
+    bioscan = load_bioscan_runner()
+    layout = bioscan.dataset_paths(tmp_path, "60k")
+    layout["selection"].touch()
+    layout["selection_report"].write_text(json.dumps({
+        "requested": 60_000,
+        "selected": 60_000,
+        "max_per_taxon": 500,
+        "min_rank": "family",
+        "seed": 42,
+        "target_families": ["Phoridae"],
+    }), encoding="utf-8")
+    with pytest.raises(SystemExit, match="settings differ"):
+        bioscan.verify_existing_selection(
+            layout["selection"],
+            layout["selection_report"],
+            max_records=60_000,
+            max_per_taxon=500,
+            min_rank="family",
+            seed=42,
+            target_families=["Phoridae", "Syrphidae"],
         )
 
 
@@ -157,9 +212,10 @@ def run_scale_cli(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str
 
 def test_scale_doctor_is_read_only_with_count_specific_labels(tmp_path):
     completed = run_scale_cli(tmp_path, "--stage", "doctor")
-    assert "Run: v10_raw200k" in completed.stdout
+    assert "Run: v10_raw200k_swiss28" in completed.stdout
     assert "200,000 training plan" in completed.stdout
     assert "diptera_60k_selection.csv" in completed.stdout
+    assert "28-family scope" in completed.stdout
     assert "poc_v09" not in completed.stdout
 
 
@@ -168,6 +224,8 @@ def test_scale_bioscan_and_dissco_dry_runs_use_profile_targets(tmp_path):
     assert "scripts/run_bioscan.py" in bioscan.stdout
     assert "--max-records 60000" in bioscan.stdout
     assert "--dataset-tag 60k" in bioscan.stdout
+    assert "--families-file" in bioscan.stdout
+    assert "target_diptera_families_v10.json" in bioscan.stdout
 
     dissco = run_scale_cli(
         tmp_path,
