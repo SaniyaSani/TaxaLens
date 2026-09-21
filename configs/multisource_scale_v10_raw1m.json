@@ -1,8 +1,8 @@
 {
-  "profile": "taxalens-multisource-v1.0-raw200k",
+  "profile": "taxalens-multisource-v1.0-raw1m",
   "run": {
-    "id": "v10_raw200k",
-    "bioscan_tag": "60k"
+    "id": "v10_raw1m",
+    "bioscan_tag": "300k"
   },
   "acquisition": {
     "iNaturalist": "bulk",
@@ -20,12 +20,12 @@
     "min_images_per_family": 1500,
     "max_per_taxon": 250
   },
-  "total_images": 200000,
+  "total_images": 1000000,
   "source_targets": {
-    "BIOSCAN-5M": 60000,
-    "iNaturalist": 60000,
-    "GBIF": 50000,
-    "DiSSCo": 30000
+    "BIOSCAN-5M": 300000,
+    "iNaturalist": 300000,
+    "GBIF": 250000,
+    "DiSSCo": 150000
   },
   "sampling_rank": "hierarchical",
   "max_per_source_taxon": 5000,
