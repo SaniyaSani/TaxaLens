@@ -1,0 +1,112 @@
+{
+  "profile": "taxalens-multisource-v1.0-raw1m",
+  "run": {
+    "id": "v10_raw1m",
+    "bioscan_tag": "300k"
+  },
+  "acquisition": {
+    "iNaturalist": "bulk",
+    "GBIF": "download",
+    "DiSSCo": "api"
+  },
+  "bioscan": {
+    "max_per_taxon": 500,
+    "min_rank": "family"
+  },
+  "target_families_file": "configs/target_diptera_families.json",
+  "required_families": ["Muscidae", "Tachinidae"],
+  "bioscan_family_topup": {
+    "families": ["Muscidae", "Tachinidae"],
+    "min_images_per_family": 1500,
+    "max_per_taxon": 250
+  },
+  "total_images": 1000000,
+  "source_targets": {
+    "BIOSCAN-5M": 300000,
+    "iNaturalist": 300000,
+    "GBIF": 250000,
+    "DiSSCo": 150000
+  },
+  "sampling_rank": "hierarchical",
+  "max_per_source_taxon": 5000,
+  "seed": 42,
+  "shard_size": 1000,
+  "image_quality": {
+    "model": "google/owlv2-base-patch16-ensemble",
+    "strict_sources": ["GBIF", "DiSSCo"],
+    "required_sources": ["BIOSCAN-5M", "iNaturalist", "GBIF"],
+    "prompts": [
+      "a fly",
+      "a pinned fly",
+      "a mosquito",
+      "a pinned mosquito",
+      "a gnat",
+      "a midge"
+    ],
+    "score_threshold": 0.1,
+    "min_image_side": 224,
+    "min_contrast_std": 2.0,
+    "min_entropy": 1.0,
+    "min_specimen_side": 64,
+    "min_specimen_area_ratio": 0.0025,
+    "crop_below_area_ratio": 0.35,
+    "crop_padding": 0.5,
+    "batch_size": 2,
+    "checkpoint_size": 256,
+    "max_processing_side": 4096
+  },
+  "embedding": {
+    "model": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+    "image_size": 512,
+    "tile_grid": 1,
+    "include_whole": true,
+    "batch_size": 4,
+    "strategy": "whole_image_only",
+    "segmentation_required": false,
+    "specimen_crop_required": false,
+    "encoders": [
+      {
+        "name": "dino",
+        "backend": "dino",
+        "model": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+        "image_size": 512,
+        "tile_grid": 1,
+        "include_whole": true,
+        "batch_size": 4
+      },
+      {
+        "name": "bioclip",
+        "backend": "bioclip",
+        "model": "hf-hub:imageomics/bioclip-2",
+        "image_size": 224,
+        "tile_grid": 1,
+        "include_whole": true,
+        "batch_size": 8
+      }
+    ],
+    "fusion": {
+      "method": "equal_weight_l2_concat",
+      "compare_individual_encoders": true
+    }
+  },
+  "training": {
+    "min_family": 50,
+    "min_genus": 25,
+    "min_species": 12,
+    "species_label_quality": "A,B",
+    "gate_quantile": 0.05,
+    "gate_margin": 0.02
+  },
+  "evaluation": {
+    "per_source": true,
+    "top_k": [1, 5],
+    "open_set": true,
+    "bioscan_unseen": true
+  },
+  "key_finder": {
+    "automatic_after_genus_candidates": true,
+    "candidate_genera": 4,
+    "region": "Europe",
+    "providers": ["curated", "Crossref", "OpenAlex"]
+  }
+}
