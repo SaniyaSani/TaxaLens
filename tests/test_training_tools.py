@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import gzip
 import subprocess
 import sys
 import tarfile
@@ -27,6 +28,36 @@ def test_inat_archive_extracts_only_expected_files(tmp_path: Path):
     paths = extract_selected(archive, out)
     assert {path.name for path in paths} == {"observations.csv.gz", "photos.csv.gz", "taxa.csv.gz", "observers.csv.gz"}
     assert not (out / "ignore.txt").exists()
+
+
+def test_inat_plain_tar_csv_members_are_normalized_to_gzip(tmp_path: Path):
+    archive = tmp_path / "metadata.tar.gz"
+    expected = {}
+    with tarfile.open(archive, "w:") as bundle:
+        for name in (
+            "observations.csv",
+            "photos.csv",
+            "taxa.csv",
+            "observers.csv",
+        ):
+            payload = f"header\n{name}\n".encode("utf-8")
+            expected[f"{name}.gz"] = payload
+            info = tarfile.TarInfo(f"monthly-export/{name}")
+            info.size = len(payload)
+            bundle.addfile(info, BytesIO(payload))
+        ignored = b"not metadata"
+        info = tarfile.TarInfo("monthly-export/projects.csv")
+        info.size = len(ignored)
+        bundle.addfile(info, BytesIO(ignored))
+
+    out = tmp_path / "out"
+    paths = extract_selected(archive, out)
+
+    assert {path.name for path in paths} == set(expected)
+    for path in paths:
+        with gzip.open(path, "rb") as handle:
+            assert handle.read() == expected[path.name]
+    assert not (out / "projects.csv.gz").exists()
 
 
 def test_multidomain_weights_and_topk():
