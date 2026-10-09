@@ -233,3 +233,35 @@ def test_selective_downloader_reads_only_chosen_local_zip_members_and_resumes(tm
     payload = json.loads(report.read_text(encoding="utf-8"))
     assert payload["downloaded_now"] == 0
     assert payload["skipped_existing"] == 3
+
+
+def test_sampling_bucket_prefers_dna_bin_with_named_rank_fallbacks():
+    from scripts.select_bioscan_diptera import sampling_bucket
+
+    assert sampling_bucket({
+        "dna_bin": "BOLD:AAA0001",
+        "species": "Bombus terrestris",
+        "genus": "Bombus",
+        "family": "Apidae",
+    }) == ("dna_bin", "BOLD:AAA0001")
+
+    assert sampling_bucket({
+        "dna_bin": "",
+        "species": "Bombus terrestris",
+        "genus": "Bombus",
+        "family": "Apidae",
+    }) == ("species", "Bombus terrestris")
+
+    assert sampling_bucket({
+        "dna_bin": "",
+        "species": "sp.",
+        "genus": "Telenomus",
+        "family": "Scelionidae",
+    }) == ("genus", "Telenomus")
+
+    assert sampling_bucket({
+        "dna_bin": "",
+        "species": "",
+        "genus": "",
+        "family": "Mymaridae",
+    }) == ("family", "Mymaridae")

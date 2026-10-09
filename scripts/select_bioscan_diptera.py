@@ -70,16 +70,23 @@ def clean_species(value: str) -> str:
 
 
 def sampling_bucket(row: dict) -> tuple[str, str]:
-    """Use the deepest trustworthy named rank for diversity balancing."""
+    """Prefer DNA BIN diversity, then fall back to the deepest named rank."""
+    dna_bin = text(row, "dna_bin", "bin_uri")
+    if dna_bin:
+        return "dna_bin", dna_bin
+
     species = clean_species(text(row, "species", "species_name"))
     if species:
         return "species", species
+
     genus = text(row, "genus")
     if genus:
         return "genus", genus
+
     family = text(row, "family")
     if family:
         return "family", family
+
     return "", ""
 
 
