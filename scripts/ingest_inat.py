@@ -27,7 +27,7 @@ from diptera_id.corpus.join import RecordIndex, rows_from_chunk
 from diptera_id.corpus.schema import canonical_taxon, finalize_record, first, normalize_license
 
 
-INAT_DIPTERA_TAXON_ID = "47822"
+DEFAULT_ORDER = "Diptera"
 RANKS = {"kingdom", "phylum", "class", "order", "family", "subfamily", "tribe", "genus", "species", "subspecies"}
 
 
@@ -50,24 +50,52 @@ def iter_inat_table(path: str | Path, chunksize: int, official_tsv: bool) -> Ite
     )
 
 
-def load_taxa(path: str | Path, chunksize: int) -> tuple[dict[str, tuple[list[str], str, str]], set[str]]:
-    """Load the relatively small taxonomy table and locate Diptera descendants."""
+def load_taxa(
+    path: str | Path,
+    chunksize: int,
+    order_name: str = DEFAULT_ORDER,
+) -> tuple[dict[str, tuple[list[str], str, str]], set[str]]:
+    """Load the taxonomy table and locate descendants of the requested order."""
     taxa: dict[str, tuple[list[str], str, str]] = {}
-    diptera: set[str] = set()
+    order_ids: set[str] = set()
+    order_key = order_name.casefold()
+
     for chunk in iter_inat_table(path, chunksize, official_tsv=True):
         for row in chunk.to_dict(orient="records"):
             taxon_id = first(row, ["taxon_id", "id"])
             if not taxon_id:
                 continue
+
             ancestry = ancestry_ids(first(row, ["ancestry", "ancestor_ids"]))
             rank = first(row, ["rank"]).lower()
             name = first(row, ["name", "scientific_name"])
             taxa[taxon_id] = (ancestry, rank, name)
-            if taxon_id == INAT_DIPTERA_TAXON_ID or INAT_DIPTERA_TAXON_ID in ancestry:
-                diptera.add(taxon_id)
-    if INAT_DIPTERA_TAXON_ID not in taxa:
-        raise SystemExit(f"taxa table does not contain iNaturalist Diptera taxon {INAT_DIPTERA_TAXON_ID}")
-    return taxa, diptera
+
+            active = first(row, ["active"], "true").casefold()
+            if (
+                rank == "order"
+                and name.casefold() == order_key
+                and active not in {"false", "0", "no"}
+            ):
+                order_ids.add(taxon_id)
+
+    if not order_ids:
+        raise SystemExit(
+            f"taxa table does not contain active iNaturalist order {order_name!r}"
+        )
+    if len(order_ids) != 1:
+        raise SystemExit(
+            f"taxa table contains multiple active roots for order "
+            f"{order_name!r}: {sorted(order_ids)}"
+        )
+
+    order_id = next(iter(order_ids))
+    selected_taxa = {
+        taxon_id
+        for taxon_id, (ancestry, _rank, _name) in taxa.items()
+        if taxon_id == order_id or order_id in ancestry
+    }
+    return taxa, selected_taxa
 
 
 def taxonomy_resolver(taxa: dict[str, tuple[list[str], str, str]]):
@@ -92,14 +120,15 @@ def taxonomy_resolver(taxa: dict[str, tuple[list[str], str, str]]):
 
 def official_observation_record(
     row: dict,
-    diptera_taxa: set[str],
+    selected_taxa: set[str],
     resolve_taxonomy,
     quality_grades: set[str],
+    order_name: str,
 ) -> tuple[str, dict] | None:
     observation_uuid = first(row, ["observation_uuid", "uuid", "id"])
     taxon_id = first(row, ["taxon_id"])
     quality = first(row, ["quality_grade"]).lower().replace("_", " ")
-    if not observation_uuid or taxon_id not in diptera_taxa:
+    if not observation_uuid or taxon_id not in selected_taxa:
         return None
     if quality_grades and quality not in quality_grades:
         return None
@@ -115,7 +144,7 @@ def official_observation_record(
         "kingdom": taxonomy.get("kingdom", ""),
         "phylum": taxonomy.get("phylum", ""),
         "class": taxonomy.get("class", ""),
-        "order": taxonomy.get("order", "Diptera"),
+        "order": taxonomy.get("order", order_name),
         "family": taxonomy.get("family", ""),
         "subfamily": taxonomy.get("subfamily", ""),
         "tribe": taxonomy.get("tribe", ""),
@@ -132,9 +161,13 @@ def official_observation_record(
     }
 
 
-def legacy_observation_record(row: dict, assume_diptera: bool) -> tuple[str, dict] | None:
+def legacy_observation_record(
+    row: dict,
+    order_name: str,
+    assume_order: bool,
+) -> tuple[str, dict] | None:
     order = first(row, ["order", "taxon_order", "dwc:order"])
-    if not assume_diptera and order.lower() != "diptera":
+    if not assume_order and order.casefold() != order_name.casefold():
         return None
     join_id = first(row, ["id", "observation_id", "gbifid", "occurrenceid", "coreid", "uuid"])
     if not join_id:
@@ -151,7 +184,7 @@ def legacy_observation_record(row: dict, assume_diptera: bool) -> tuple[str, dic
         "source": "iNaturalist",
         "source_record_id": join_id,
         "observation_id": join_id,
-        "order": order or "Diptera",
+        "order": order or order_name,
         "family": first(row, ["family", "taxon_family"]),
         "subfamily": first(row, ["subfamily", "taxon_subfamily"]),
         "tribe": first(row, ["tribe", "taxon_tribe"]),
@@ -219,8 +252,29 @@ def main() -> None:
     parser.add_argument("--image-size", choices=["original", "large", "medium", "small", "thumb", "square"], default="medium")
     parser.add_argument("--max-observations", type=int, default=0, help="Pilot cap after filtering; 0 means all")
     parser.add_argument("--keep-ineligible", action="store_true")
-    parser.add_argument("--assume-diptera", action="store_true", help="Legacy flattened exports only")
+    parser.add_argument(
+        "--order",
+        default=DEFAULT_ORDER,
+        help="Taxonomic order to ingest; default: Diptera",
+    )
+    parser.add_argument(
+        "--assume-order",
+        action="store_true",
+        help="Legacy flattened exports only: assume every row belongs to --order",
+    )
+    parser.add_argument(
+        "--assume-diptera",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args()
+
+    order_name = args.order.strip()
+    if not order_name:
+        raise SystemExit("--order must not be empty")
+    if args.assume_diptera and order_name.casefold() != "diptera":
+        raise SystemExit("--assume-diptera cannot be combined with a non-Diptera --order")
+    assume_order = args.assume_order or args.assume_diptera
 
     official = bool(args.taxa)
     if official and not args.photos:
@@ -229,13 +283,16 @@ def main() -> None:
     quality = {value.strip().lower().replace("_", " ") for value in args.quality_grades.split(",") if value.strip()}
 
     taxa: dict[str, tuple[list[str], str, str]] = {}
-    diptera_taxa: set[str] = set()
+    selected_taxa: set[str] = set()
     resolve_taxonomy = None
     if official:
-        print("loading iNaturalist taxonomy…")
-        taxa, diptera_taxa = load_taxa(args.taxa, args.chunksize)
+        print(f"loading iNaturalist taxonomy for {order_name}…")
+        taxa, selected_taxa = load_taxa(args.taxa, args.chunksize, order_name)
         resolve_taxonomy = taxonomy_resolver(taxa)
-        print(f"loaded {len(taxa)} taxa; {len(diptera_taxa)} Diptera taxa")
+        print(
+            f"loaded {len(taxa)} taxa; "
+            f"{len(selected_taxa)} {order_name} taxa"
+        )
 
     with RecordIndex() as observations, RecordIndex() as observers:
         if official and args.observers:
@@ -251,9 +308,9 @@ def main() -> None:
             batch = []
             for row in chunk.to_dict(orient="records"):
                 item = (
-                    official_observation_record(row, diptera_taxa, resolve_taxonomy, quality)
+                    official_observation_record(row, selected_taxa, resolve_taxonomy, quality, order_name)
                     if official
-                    else legacy_observation_record(row, args.assume_diptera)
+                    else legacy_observation_record(row, order_name, assume_order)
                 )
                 if item:
                     batch.append(item)
@@ -261,10 +318,10 @@ def main() -> None:
                         stop = True
                         break
             indexed += observations.add(batch)
-            print(f"indexed Diptera observations: {indexed}", end="\r")
+            print(f"indexed {order_name} observations: {indexed}", end="\r")
             if stop:
                 break
-        print(f"\nindexed Diptera observations: {indexed}")
+        print(f"\nindexed {order_name} observations: {indexed}")
 
         with ManifestWriter(args.out) as writer:
             if args.photos:

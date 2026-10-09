@@ -73,6 +73,61 @@ def test_official_inaturalist_four_table_ingest(tmp_path: Path):
     assert frame.iloc[0]["image_url"].endswith("/photos/77/medium.jpg")
 
 
+
+def test_official_inaturalist_hymenoptera_ingest(tmp_path: Path):
+    taxa = tmp_path / "taxa_hymenoptera.csv.gz"
+    observations = tmp_path / "observations_hymenoptera.csv.gz"
+    photos = tmp_path / "photos_hymenoptera.csv.gz"
+    out = tmp_path / "inat_hymenoptera.csv"
+
+    pd.DataFrame([
+        {"taxon_id": "1", "ancestry": "", "rank": "kingdom",
+         "name": "Animalia", "active": "true"},
+        {"taxon_id": "47201", "ancestry": "1", "rank": "order",
+         "name": "Hymenoptera", "active": "true"},
+        {"taxon_id": "200", "ancestry": "1/47201", "rank": "family",
+         "name": "Apidae", "active": "true"},
+        {"taxon_id": "201", "ancestry": "1/47201/200", "rank": "genus",
+         "name": "Bombus", "active": "true"},
+        {"taxon_id": "202", "ancestry": "1/47201/200/201", "rank": "species",
+         "name": "Bombus terrestris", "active": "true"},
+    ]).to_csv(taxa, sep="\t", index=False, compression="gzip")
+
+    pd.DataFrame([
+        {"observation_uuid": "obs-bee", "observer_id": "8",
+         "taxon_id": "202", "quality_grade": "research",
+         "observed_on": "2026-08-02"},
+        {"observation_uuid": "obs-other", "observer_id": "8",
+         "taxon_id": "999", "quality_grade": "research"},
+    ]).to_csv(observations, sep="\t", index=False, compression="gzip")
+
+    pd.DataFrame([
+        {"photo_uuid": "p-bee", "photo_id": "501",
+         "observation_uuid": "obs-bee", "observer_id": "8",
+         "extension": "jpg", "license": "cc-by"},
+        {"photo_uuid": "p-other", "photo_id": "502",
+         "observation_uuid": "obs-other", "observer_id": "8",
+         "extension": "jpg", "license": "cc-by"},
+    ]).to_csv(photos, sep="\t", index=False, compression="gzip")
+
+    run_script(
+        "ingest_inat.py",
+        "--observations", observations,
+        "--photos", photos,
+        "--taxa", taxa,
+        "--order", "Hymenoptera",
+        "--out", out,
+    )
+
+    frame = pd.read_csv(out)
+
+    assert len(frame) == 1
+    assert frame.iloc[0]["source_record_id"] == "obs-bee"
+    assert frame.iloc[0]["order"] == "Hymenoptera"
+    assert frame.iloc[0]["family"] == "Apidae"
+    assert frame.iloc[0]["genus"] == "Bombus"
+    assert frame.iloc[0]["species"] == "Bombus terrestris"
+
 def test_bioscan_ingest_preserves_dna(tmp_path: Path):
     metadata = tmp_path / "bioscan.csv"
     out = tmp_path / "bioscan_out.csv"

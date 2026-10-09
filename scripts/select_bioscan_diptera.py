@@ -110,8 +110,9 @@ def is_eligible(
     row: dict,
     min_rank: str,
     target_families: set[str] | None = None,
+    order_name: str = "Diptera",
 ) -> bool:
-    if text(row, "order", "taxon_order").casefold() != "diptera":
+    if text(row, "order", "taxon_order").casefold() != order_name.casefold():
         return False
     if not text(row, "processid", "process_id", "sampleid", "sample_id"):
         return False
@@ -219,14 +220,18 @@ def archive_member(row: dict) -> str:
     return f"{split}/{middle}{process_id}.jpg"
 
 
-def prepare_selected_row(row: dict, image_dir: Path) -> dict:
+def prepare_selected_row(
+    row: dict,
+    image_dir: Path,
+    order_name: str = "Diptera",
+) -> dict:
     result = {str(key): "" if pd.isna(value) else value for key, value in row.items()}
     process_id = text(result, "processid", "process_id", "sampleid", "sample_id")
     split = text(result, "split", "source_split")
     rank, bucket = sampling_bucket(result)
     result.update({
         "processid": process_id,
-        "order": "Diptera",
+        "order": order_name,
         "species": clean_species(text(result, "species", "species_name")),
         "source_split": split,
         "selection_rank": rank,
@@ -245,6 +250,7 @@ def prepare_selected_row(row: dict, image_dir: Path) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--metadata", required=True, help="Official BIOSCAN-5M metadata CSV")
+    parser.add_argument("--order", default="Diptera", help="Taxonomic order to select")
     parser.add_argument("--out", default="data/raw/bioscan/diptera_30k_selection.csv")
     parser.add_argument("--report", default="data/raw/bioscan/diptera_30k_selection_report.json")
     parser.add_argument("--image-dir", default="data/raw/bioscan/diptera_30k_images")
@@ -253,13 +259,16 @@ def main() -> None:
     parser.add_argument("--min-rank", choices=("family", "genus", "species"), default="family")
     parser.add_argument(
         "--families-file",
-        help="Optional JSON family scope; only matching Diptera are eligible",
+        help="Optional JSON family scope; only matching families in --order are eligible",
     )
     parser.add_argument("--split-targets", help="JSON path or comma list such as pretrain=12000,train=12000,...")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--chunksize", type=int, default=100_000)
     parser.add_argument("--allow-shortfall", action="store_true")
     args = parser.parse_args()
+    order_name = args.order.strip()
+    if not order_name:
+        raise SystemExit("--order must not be empty")
     if args.max_records <= 0:
         raise SystemExit("--max-records must be positive")
     if args.max_per_taxon <= 0:
@@ -272,10 +281,10 @@ def main() -> None:
     bucket_counts: dict[str, Counter] = defaultdict(Counter)
     eligible_total = 0
 
-    # Pass 1: count only eligible Diptera strata.
+    # Pass 1: count only eligible strata for the requested order.
     for chunk in iter_table(args.metadata, args.chunksize):
         for row in chunk.to_dict(orient="records"):
-            if not is_eligible(row, args.min_rank, target_family_keys):
+            if not is_eligible(row, args.min_rank, target_family_keys, order_name):
                 continue
             split = text(row, "split", "source_split")
             rank, bucket = sampling_bucket(row)
@@ -285,7 +294,7 @@ def main() -> None:
             split_counts[split] += 1
             bucket_counts[split][key] += 1
             eligible_total += 1
-        print(f"BIOSCAN metadata pass 1: {eligible_total:,} eligible Diptera", end="\r")
+        print(f"BIOSCAN metadata pass 1: {eligible_total:,} eligible {order_name}", end="\r")
     print()
 
     split_budgets = allocate_budgets(split_counts, split_targets, args.max_records)
@@ -301,7 +310,7 @@ def main() -> None:
     considered = 0
     for chunk in iter_table(args.metadata, args.chunksize):
         for row in chunk.to_dict(orient="records"):
-            if not is_eligible(row, args.min_rank, target_family_keys):
+            if not is_eligible(row, args.min_rank, target_family_keys, order_name):
                 continue
             split = text(row, "split", "source_split")
             rank, bucket_value = sampling_bucket(row)
@@ -323,7 +332,7 @@ def main() -> None:
 
     image_dir = Path(args.image_dir)
     image_dir.mkdir(parents=True, exist_ok=True)
-    selected = [prepare_selected_row(row, image_dir) for heap in heaps.values() for _, _, row in heap]
+    selected = [prepare_selected_row(row, image_dir, order_name) for heap in heaps.values() for _, _, row in heap]
     selected.sort(key=lambda row: (row["source_split"], row["selection_rank"], row["selection_bucket"], row["processid"]))
 
     out = Path(args.out)
@@ -338,7 +347,8 @@ def main() -> None:
     report = {
         "requested": args.max_records,
         "selected": len(selected),
-        "eligible_diptera": eligible_total,
+        "taxonomic_order": order_name,
+        "eligible_order": eligible_total,
         "min_rank": args.min_rank,
         "seed": args.seed,
         "max_per_taxon": args.max_per_taxon,
@@ -355,6 +365,9 @@ def main() -> None:
         "full_image_archives_downloaded": False,
         "next_step": "download_bioscan_subset.py",
     }
+    if order_name.casefold() == "diptera":
+        report["eligible_diptera"] = eligible_total
+
     report_path = Path(args.report)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
