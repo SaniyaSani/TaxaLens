@@ -19,3 +19,7 @@ models/*.json
 
 # ScienceCluster job logs
 logs/
+
+# Local crash dumps and manual backup copies
+core
+*.bak

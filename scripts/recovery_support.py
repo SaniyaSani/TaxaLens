@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+import uuid
 from pathlib import Path
 
 
@@ -24,11 +25,14 @@ def backup_file(path: Path) -> Path | None:
     target = path.parent / "recovery_backups" / f"{path.name}.{sha[:16]}.bak"
     target.parent.mkdir(parents=True, exist_ok=True)
     if not target.exists():
-        pending = target.with_name(target.name + ".pending")
-        shutil.copy2(path, pending)
-        if digest(pending) != sha:
-            raise RuntimeError(f"Backup verification failed: {path}; original untouched")
-        pending.replace(target)
+        pending = target.with_name(target.name + f".{uuid.uuid4().hex}.pending")
+        try:
+            shutil.copy2(path, pending)
+            if digest(pending) != sha:
+                raise RuntimeError(f"Backup verification failed: {path}; original untouched")
+            pending.replace(target)
+        finally:
+            pending.unlink(missing_ok=True)
     elif digest(target) != sha:
         raise RuntimeError(f"Existing backup is damaged: {target}; original untouched")
     print(f"Backup verified: {target}", flush=True)
@@ -37,9 +41,15 @@ def backup_file(path: Path) -> Path | None:
 
 def atomic_json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    pending = path.with_name(path.name + ".pending")
-    pending.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
-    pending.replace(path)
+    pending = path.with_name(path.name + f".{uuid.uuid4().hex}.pending")
+    try:
+        pending.write_text(
+            json.dumps(value, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+        pending.replace(path)
+    finally:
+        pending.unlink(missing_ok=True)
 
 
 def checkpoint_bioscan(layout: dict[str, Path]) -> None:

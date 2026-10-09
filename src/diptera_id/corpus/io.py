@@ -20,7 +20,7 @@ def iter_table(path: str | Path, chunksize: int = 100_000) -> Iterator[pd.DataFr
     path = Path(path)
     name = path.name.lower()
     if name.endswith((".csv", ".tsv", ".txt", ".csv.gz", ".tsv.gz", ".txt.gz")):
-        yield from pd.read_csv(path, sep=infer_separator(path), dtype=str, keep_default_na=False, chunksize=chunksize, low_memory=False)
+        yield from pd.read_csv(path, sep=infer_separator(path), dtype=str, keep_default_na=False, chunksize=chunksize, low_memory=False, quoting=(csv.QUOTE_NONE if name in {"occurrence.txt", "multimedia.txt"} else csv.QUOTE_MINIMAL))
         return
     if name.endswith(".parquet"):
         try:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from pathlib import Path
 
 
@@ -22,7 +23,9 @@ def main() -> None:
     os.environ["DIPTERA_MODEL_DIR"] = str(model_dir)
     import uvicorn
 
-    uvicorn.run("app.api:app", host=args.host, port=args.port, reload=args.reload)
+    api_dir = Path(__file__).resolve().parents[1] / "app"
+    sys.path.insert(0, str(api_dir))
+    uvicorn.run("api:app", host=args.host, port=args.port, reload=args.reload)
 
 
 if __name__ == "__main__":

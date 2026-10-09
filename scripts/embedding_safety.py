@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 
-KEY_COLUMNS = ("specimen_group_id", "record_id", "split_group")
+KEY_COLUMNS = ("record_id", "split_group", "specimen_group_id")
 COHORT_COLUMNS = (
     "record_id", "specimen_group_id", "split_group", "split", "source",
     "source_split", "family", "genus", "species", "label_quality",
@@ -51,14 +51,35 @@ def checkpoint_ready(complete: Path, manifest: Path, config: dict) -> bool:
 
 
 def common_key_column(*frames) -> str:
-    for column in KEY_COLUMNS:
-        if all(column in frame and frame[column].astype(str).str.strip().ne("").all()
-               for frame in frames):
-            if any(frame[column].astype(str).duplicated().any() for frame in frames):
-                raise SystemExit(f"duplicate specimen keys in {column}; repair grouping before fusion")
-            return column
-    raise SystemExit("no common complete specimen key; cannot align encoders safely")
+    duplicated_columns: list[str] = []
 
+    for column in KEY_COLUMNS:
+        complete = all(
+            column in frame
+            and frame[column].astype(str).str.strip().ne("").all()
+            for frame in frames
+        )
+        if not complete:
+            continue
+
+        if any(
+            frame[column].astype(str).duplicated().any()
+            for frame in frames
+        ):
+            duplicated_columns.append(column)
+            continue
+
+        return column
+
+    if duplicated_columns:
+        raise SystemExit(
+            "duplicate specimen keys; no common unique specimen key; duplicated candidates: "
+            + ", ".join(duplicated_columns)
+        )
+
+    raise SystemExit(
+        "no common complete specimen key; cannot align encoders safely"
+    )
 
 def check_aligned_metadata(left, right) -> None:
     for column in COHORT_COLUMNS:
