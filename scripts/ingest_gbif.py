@@ -17,10 +17,17 @@ from diptera_id.corpus.join import RecordIndex, rows_from_chunk
 from diptera_id.corpus.schema import finalize_record, first, normalize_license
 
 
-def occurrence_record(row: dict, assume_filtered: bool) -> tuple[str, dict] | None:
+def occurrence_record(
+    row: dict,
+    assume_filtered: bool,
+    order_name: str = "Diptera",
+) -> tuple[str, dict] | None:
     order = first(row, ["order"])
     basis = first(row, ["basisofrecord", "basis_of_record"]).upper()
-    if not assume_filtered and (order.lower() != "diptera" or basis != "PRESERVED_SPECIMEN"):
+    if not assume_filtered and (
+        order.casefold() != order_name.casefold()
+        or basis != "PRESERVED_SPECIMEN"
+    ):
         return None
     join_id = first(row, ["gbifid", "id", "occurrenceid", "coreid"])
     if not join_id:
@@ -29,7 +36,7 @@ def occurrence_record(row: dict, assume_filtered: bool) -> tuple[str, dict] | No
     record = {
         "source": "GBIF",
         "source_record_id": join_id,
-        "order": order or "Diptera",
+        "order": order or order_name,
         "family": first(row, ["family"]),
         "subfamily": first(row, ["subfamily"]),
         "tribe": first(row, ["tribe"]),
@@ -89,16 +96,41 @@ def main() -> None:
     parser.add_argument("--chunksize", type=int, default=100_000)
     parser.add_argument("--licenses", default="CC0,CC-BY,CC-BY-SA")
     parser.add_argument("--keep-ineligible", action="store_true")
-    parser.add_argument("--assume-filtered", action="store_true", help="Input already contains only preserved Diptera")
+    parser.add_argument(
+        "--order",
+        default="Diptera",
+        help="Taxonomic order to retain",
+    )
+    parser.add_argument(
+        "--assume-filtered",
+        action="store_true",
+        help="Input already contains only preserved specimens from --order",
+    )
     args = parser.parse_args()
+
+    order_name = args.order.strip()
+    if not order_name:
+        raise SystemExit("--order must not be empty")
 
     allowed = {normalize_license(value) for value in args.licenses.split(",")}
     with RecordIndex() as index:
         indexed = 0
         for chunk in iter_table(args.occurrence, args.chunksize):
-            indexed += index.add(rows_from_chunk(chunk, lambda row: occurrence_record(row, args.assume_filtered)))
-            print(f"indexed GBIF preserved Diptera: {indexed}", end="\r")
-        print(f"\nindexed GBIF preserved Diptera: {indexed}")
+            indexed += index.add(
+                rows_from_chunk(
+                    chunk,
+                    lambda row: occurrence_record(
+                        row,
+                        args.assume_filtered,
+                        order_name,
+                    ),
+                )
+            )
+            print(
+                f"indexed GBIF preserved {order_name}: {indexed}",
+                end="\r",
+            )
+        print(f"\nindexed GBIF preserved {order_name}: {indexed}")
 
         with ManifestWriter(args.out) as writer:
             if args.multimedia:

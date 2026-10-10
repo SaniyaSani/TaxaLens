@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "taxonomic_order": "Hymenoptera",
+  "sampling_group": "aculeata_context",
+  "target_records": 20000,
+  "max_per_taxon": 4,
+  "families": [
+    "Formicidae",
+    "Halictidae",
+    "Crabronidae",
+    "Pemphredonidae",
+    "Apidae",
+    "Colletidae",
+    "Vespidae",
+    "Megachilidae",
+    "Bembicidae",
+    "Psenidae",
+    "Andrenidae",
+    "Philanthidae",
+    "Ampulicidae",
+    "Astatidae",
+    "Sphecidae",
+    "Mellinidae",
+    "Ammoplanidae"
+  ]
+}

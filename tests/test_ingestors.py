@@ -226,3 +226,67 @@ def test_prepare_corpus_dry_run(tmp_path: Path):
         "pilot": {"rank": "family"},
     }), encoding="utf-8")
     run_script("prepare_corpus.py", "--config", config, "--dry-run")
+
+
+def test_bioscan_and_gbif_support_hymenoptera_order():
+    from scripts.ingest_bioscan import to_record as bioscan_record
+    from scripts.ingest_gbif import occurrence_record as gbif_record
+
+    bioscan_row = {
+        "order": "Hymenoptera",
+        "processid": "HYM-001",
+        "family": "Scelionidae",
+        "dna_bin": "BOLD:HYM0001",
+        "image_url": "https://example.org/hymenoptera.jpg",
+        "split": "train",
+    }
+
+    normalized_bioscan = bioscan_record(
+        bioscan_row,
+        None,
+        ".jpg",
+        False,
+        "Hymenoptera",
+    )
+
+    assert normalized_bioscan is not None
+    assert normalized_bioscan["order"] == "Hymenoptera"
+    assert (
+        bioscan_record(
+            bioscan_row,
+            None,
+            ".jpg",
+            False,
+            "Diptera",
+        )
+        is None
+    )
+
+    gbif_row = {
+        "gbifid": "123456",
+        "order": "Hymenoptera",
+        "basisofrecord": "PRESERVED_SPECIMEN",
+        "family": "Scelionidae",
+    }
+
+    normalized_gbif = gbif_record(
+        gbif_row,
+        False,
+        "Hymenoptera",
+    )
+
+    assert normalized_gbif is not None
+    assert normalized_gbif[1]["order"] == "Hymenoptera"
+    assert gbif_record(gbif_row, False, "Diptera") is None
+
+    assumed_gbif = gbif_record(
+        {
+            "gbifid": "654321",
+            "basisofrecord": "PRESERVED_SPECIMEN",
+        },
+        True,
+        "Hymenoptera",
+    )
+
+    assert assumed_gbif is not None
+    assert assumed_gbif[1]["order"] == "Hymenoptera"

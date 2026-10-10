@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "taxonomic_order": "Hymenoptera",
+  "sampling_group": "other_parasitoid_enriched",
+  "target_records": 7000,
+  "max_per_taxon": 4,
+  "families": [
+    "Chalcididae",
+    "Torymidae",
+    "Pompilidae",
+    "Evaniidae",
+    "Chrysididae",
+    "Mutillidae",
+    "Sclerogibbidae",
+    "Tiphiidae",
+    "Rhopalosomatidae",
+    "Thynnidae",
+    "Scolebythidae",
+    "Sierolomorphidae",
+    "Gasteruptiidae",
+    "Scoliidae",
+    "Myrmosidae",
+    "Megalyridae",
+    "Sapygidae",
+    "Leucospidae",
+    "Aulacidae",
+    "Chyphotidae",
+    "Pelecinidae",
+    "Trigonalidae",
+    "Stephanidae"
+  ]
+}

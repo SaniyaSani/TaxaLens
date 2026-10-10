@@ -1,0 +1,167 @@
+{
+  "schema": 1,
+  "taxonomic_order": "Hymenoptera",
+  "objective": "Parasitoid-focused BIOSCAN Teacher corpus with strong emphasis on minute parasitoid-enriched lineages",
+  "grouping_guardrail": "Groups are sampling strata, not claims that every species in a family has the same life history",
+  "sampling_bucket_priority": [
+    "dna_bin",
+    "species",
+    "genus",
+    "family"
+  ],
+  "total_supervised_target": 200000,
+  "split_weights": {
+    "pretrain": 0.4,
+    "train": 0.4,
+    "val": 0.05,
+    "test": 0.05,
+    "key_unseen": 0.025,
+    "val_unseen": 0.025,
+    "test_unseen": 0.025,
+    "other_heldout": 0.025
+  },
+  "groups": {
+    "minute_parasitoid_enriched": {
+      "target_records": 135000,
+      "max_per_taxon": 4,
+      "families": [
+        "Scelionidae",
+        "Diapriidae",
+        "Platygastridae",
+        "Mymaridae",
+        "Eulophidae",
+        "Bethylidae",
+        "Figitidae",
+        "Trichogrammatidae",
+        "Aphelinidae",
+        "Encyrtidae",
+        "Pteromalidae",
+        "Ceraphronidae",
+        "Eupelmidae",
+        "Dryinidae",
+        "Proctotrupidae",
+        "Signiphoridae",
+        "Megaspilidae",
+        "Diparidae",
+        "Azotidae",
+        "Cleonymidae",
+        "Pirenidae",
+        "Mymarommatidae",
+        "Tetracampidae",
+        "Chalcidoidea_incertae_sedis",
+        "Perilampidae",
+        "Sparasionidae",
+        "Eunotidae",
+        "Embolemidae",
+        "Eucharitidae",
+        "Lyciscidae",
+        "Ismaridae",
+        "Spalangiidae",
+        "Chalcedectidae",
+        "Moranilidae",
+        "Cerocephalidae",
+        "Metapelmatidae",
+        "Heloridae",
+        "Herbertiidae",
+        "Systasidae",
+        "Ceidae",
+        "Eutrichosomatidae",
+        "Chrysolampidae",
+        "Nixoniidae",
+        "Liopteridae"
+      ]
+    },
+    "braconid_ichneumonid": {
+      "target_records": 35000,
+      "max_per_taxon": 4,
+      "families": [
+        "Braconidae",
+        "Ichneumonidae"
+      ]
+    },
+    "other_parasitoid_enriched": {
+      "target_records": 7000,
+      "max_per_taxon": 4,
+      "families": [
+        "Chalcididae",
+        "Torymidae",
+        "Pompilidae",
+        "Evaniidae",
+        "Chrysididae",
+        "Mutillidae",
+        "Sclerogibbidae",
+        "Tiphiidae",
+        "Rhopalosomatidae",
+        "Thynnidae",
+        "Scolebythidae",
+        "Sierolomorphidae",
+        "Gasteruptiidae",
+        "Scoliidae",
+        "Myrmosidae",
+        "Megalyridae",
+        "Sapygidae",
+        "Leucospidae",
+        "Aulacidae",
+        "Chyphotidae",
+        "Pelecinidae",
+        "Trigonalidae",
+        "Stephanidae"
+      ]
+    },
+    "aculeata_context": {
+      "target_records": 20000,
+      "max_per_taxon": 4,
+      "families": [
+        "Formicidae",
+        "Halictidae",
+        "Crabronidae",
+        "Pemphredonidae",
+        "Apidae",
+        "Colletidae",
+        "Vespidae",
+        "Megachilidae",
+        "Bembicidae",
+        "Psenidae",
+        "Andrenidae",
+        "Philanthidae",
+        "Ampulicidae",
+        "Astatidae",
+        "Sphecidae",
+        "Mellinidae",
+        "Ammoplanidae"
+      ]
+    },
+    "mixed_and_symphyta_context": {
+      "target_records": 3000,
+      "max_per_taxon": 4,
+      "families": [
+        "Eurytomidae",
+        "Cynipidae",
+        "Megastigmidae",
+        "Agaonidae",
+        "Tenthredinidae",
+        "Pergidae",
+        "Epichrysomallidae",
+        "Xyelidae",
+        "Ormyridae",
+        "Tanaostigmatidae",
+        "Argidae",
+        "Cephidae",
+        "Diprionidae",
+        "Anaxyelidae",
+        "Diplolepididae",
+        "Pamphiliidae"
+      ]
+    }
+  },
+  "unresolved_pool": {
+    "family_value": "__unresolved__",
+    "target_records": 15000,
+    "supervised": false,
+    "purpose": [
+      "teacher_distillation",
+      "open_set_calibration",
+      "retrieval"
+    ]
+  }
+}

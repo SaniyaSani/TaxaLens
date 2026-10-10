@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "taxonomic_order": "Hymenoptera",
+  "sampling_group": "braconid_ichneumonid",
+  "target_records": 35000,
+  "max_per_taxon": 4,
+  "families": [
+    "Braconidae",
+    "Ichneumonidae"
+  ]
+}

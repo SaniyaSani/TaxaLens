@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "taxonomic_order": "Hymenoptera",
+  "sampling_group": "mixed_and_symphyta_context",
+  "target_records": 3000,
+  "max_per_taxon": 4,
+  "families": [
+    "Eurytomidae",
+    "Cynipidae",
+    "Megastigmidae",
+    "Agaonidae",
+    "Tenthredinidae",
+    "Pergidae",
+    "Epichrysomallidae",
+    "Xyelidae",
+    "Ormyridae",
+    "Tanaostigmatidae",
+    "Argidae",
+    "Cephidae",
+    "Diprionidae",
+    "Anaxyelidae",
+    "Diplolepididae",
+    "Pamphiliidae"
+  ]
+}

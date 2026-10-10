@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Normalize BIOSCAN-5M metadata, keeping only Diptera image/specimen records."""
+"""Normalize BIOSCAN-5M image and specimen metadata for a selected order."""
 from __future__ import annotations
 
 import argparse
@@ -20,9 +20,15 @@ def clean_species(value: str) -> str:
     return "" if PLACEHOLDER.search(value or "") else value
 
 
-def to_record(row: dict, image_root: Path | None, image_extension: str, assume_diptera: bool) -> dict | None:
+def to_record(
+    row: dict,
+    image_root: Path | None,
+    image_extension: str,
+    assume_diptera: bool,
+    order_name: str = "Diptera",
+) -> dict | None:
     order = first(row, ["order", "taxon_order"])
-    if not assume_diptera and order.lower() != "diptera":
+    if not assume_diptera and order.casefold() != order_name.casefold():
         return None
     process_id = first(row, ["processid", "process_id", "sampleid", "sample_id", "specimen_id"])
     if not process_id:
@@ -52,7 +58,7 @@ def to_record(row: dict, image_root: Path | None, image_extension: str, assume_d
         "kingdom": first(row, ["kingdom"]),
         "phylum": first(row, ["phylum"]),
         "class": first(row, ["class"]),
-        "order": order or "Diptera",
+        "order": order or order_name,
         "family": first(row, ["family"]),
         "subfamily": first(row, ["subfamily"]),
         "genus": first(row, ["genus"]),
@@ -85,16 +91,51 @@ def main() -> None:
     parser.add_argument("--image-extension", default=".jpg")
     parser.add_argument("--out", default="data/corpus/bioscan_raw.parquet")
     parser.add_argument("--chunksize", type=int, default=100_000)
-    parser.add_argument("--assume-diptera", action="store_true")
+    parser.add_argument(
+        "--order",
+        default="Diptera",
+        help="Taxonomic order to retain",
+    )
+    parser.add_argument(
+        "--assume-diptera",
+        action="store_true",
+        help="Legacy option for already filtered Diptera input",
+    )
     args = parser.parse_args()
+
+    order_name = args.order.strip()
+    if not order_name:
+        raise SystemExit("--order must not be empty")
+    if args.assume_diptera and order_name.casefold() != "diptera":
+        raise SystemExit(
+            "--assume-diptera cannot be combined with a non-Diptera --order"
+        )
 
     root = Path(args.image_root) if args.image_root else None
     with ManifestWriter(args.out) as writer:
         for chunk in iter_table(args.metadata, args.chunksize):
-            rows = [record for raw in chunk.to_dict(orient="records") if (record := to_record(raw, root, args.image_extension, args.assume_diptera))]
+            rows = [
+                record
+                for raw in chunk.to_dict(orient="records")
+                if (
+                    record := to_record(
+                        raw,
+                        root,
+                        args.image_extension,
+                        args.assume_diptera,
+                        order_name,
+                    )
+                )
+            ]
             writer.write(rows)
-            print(f"wrote BIOSCAN Diptera: {writer.rows_written}", end="\r")
-        print(f"\nwrote {writer.rows_written} BIOSCAN-5M rows -> {args.out}")
+            print(
+                f"wrote BIOSCAN {order_name}: {writer.rows_written}",
+                end="\r",
+            )
+        print(
+            f"\nwrote {writer.rows_written} BIOSCAN-5M "
+            f"{order_name} rows -> {args.out}"
+        )
 
 
 if __name__ == "__main__":
