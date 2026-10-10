@@ -140,6 +140,24 @@ def main() -> None:
     if not source_targets:
         raise SystemExit("config must define source_targets")
     per_taxon_cap = int(profile.get("max_per_source_taxon", 5_000))
+    per_source_taxon_caps = {
+        str(source): int(value)
+        for source, value in profile.get(
+            "max_per_source_taxon_by_source",
+            {},
+        ).items()
+    }
+    unknown_cap_sources = set(per_source_taxon_caps) - set(source_targets)
+    if unknown_cap_sources:
+        raise SystemExit(
+            "max_per_source_taxon_by_source contains unknown source(s): "
+            + ", ".join(sorted(unknown_cap_sources))
+        )
+    if per_taxon_cap < 0 or any(
+        value < 0 for value in per_source_taxon_caps.values()
+    ):
+        raise SystemExit("per-source taxon caps must be zero or positive")
+
     seed = int(profile.get("seed", 42))
     target_family_names, target_family_keys = load_target_families(profile)
     required_family_names = [str(value).strip() for value in profile.get("required_families", []) if str(value).strip()]
@@ -166,8 +184,20 @@ def main() -> None:
     )
     stratum_budgets: dict[tuple[str, str], int] = {}
     for source, budget in source_budgets.items():
-        cap = per_taxon_cap if per_taxon_cap > 0 else max(strata_counts[source].values(), default=0)
-        for taxon, value in allocate_taxon_budgets(dict(strata_counts[source]), budget, cap).items():
+        configured_cap = per_source_taxon_caps.get(
+            source,
+            per_taxon_cap,
+        )
+        cap = (
+            configured_cap
+            if configured_cap > 0
+            else max(strata_counts[source].values(), default=0)
+        )
+        for taxon, value in allocate_taxon_budgets(
+            dict(strata_counts[source]),
+            budget,
+            cap,
+        ).items():
             if value:
                 stratum_budgets[(source, taxon)] = value
 
@@ -235,6 +265,8 @@ def main() -> None:
         "selected_total": selected_total,
         "full_corpus": full_corpus,
         "sampling_rank": rank,
+        "max_per_source_taxon": per_taxon_cap,
+        "max_per_source_taxon_by_source": per_source_taxon_caps,
         "available_by_source": dict(source_counts),
         "budget_by_source": source_budgets,
         "selected_by_source": dict(selected_by_source),

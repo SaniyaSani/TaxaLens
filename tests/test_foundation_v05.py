@@ -120,3 +120,71 @@ def test_planner_full_mode_keeps_every_eligible_row(tmp_path):
     ], cwd=ROOT, check=True)
     assert len(pd.read_csv(output)) == len(rows)
     assert json.loads(report.read_text(encoding="utf-8"))["full_corpus"] is True
+
+
+def test_plan_supports_source_specific_taxon_caps(tmp_path: Path):
+    rows = []
+
+    for source in ("BIOSCAN-5M", "GBIF"):
+        for index in range(6):
+            rows.append({
+                "record_id": f"{source}-{index}",
+                "source": source,
+                "source_record_id": f"{source}-specimen-{index}",
+                "source_image_id": str(index),
+                "image_url": (
+                    f"https://example.test/{source}/{index}.jpg"
+                ),
+                "image_license": "CC0",
+                "order": "Hymenoptera",
+                "family": "Scelionidae",
+                "eligible_supervised": True,
+            })
+
+    manifest = tmp_path / "master.csv"
+    pd.DataFrame(rows).to_csv(manifest, index=False)
+
+    profile = tmp_path / "source-caps.json"
+    profile.write_text(json.dumps({
+        "profile": "source-cap-test",
+        "total_images": 10,
+        "source_targets": {
+            "BIOSCAN-5M": 5,
+            "GBIF": 5,
+        },
+        "sampling_rank": "hierarchical",
+        "max_per_source_taxon": 2,
+        "max_per_source_taxon_by_source": {
+            "BIOSCAN-5M": 0,
+        },
+        "seed": 7,
+    }), encoding="utf-8")
+
+    output = tmp_path / "planned.csv"
+    report_path = tmp_path / "report.json"
+
+    subprocess.run([
+        sys.executable,
+        str(ROOT / "scripts/plan_foundation_corpus.py"),
+        "--input", str(manifest),
+        "--config", str(profile),
+        "--out", str(output),
+        "--report", str(report_path),
+    ], cwd=ROOT, check=True)
+
+    planned = pd.read_csv(output)
+    selected = planned.groupby("source").size().to_dict()
+
+    assert selected == {
+        "BIOSCAN-5M": 5,
+        "GBIF": 2,
+    }
+
+    report = json.loads(
+        report_path.read_text(encoding="utf-8")
+    )
+
+    assert report["max_per_source_taxon"] == 2
+    assert report["max_per_source_taxon_by_source"] == {
+        "BIOSCAN-5M": 0,
+    }
