@@ -206,7 +206,14 @@ def finalize_record(raw: Mapping[str, Any]) -> dict[str, Any]:
         record["accepted_scientific_name"] = record["subspecies"] or record["species"] or record["genus"] or record["family"]
 
     if record["eligible_supervised"] in ("", None):
-        has_label = record["identification_level"] in {"family", "genus", "species", "subspecies"}
+        has_label = record["identification_level"] in {
+            "family",
+            "subfamily",
+            "tribe",
+            "genus",
+            "species",
+            "subspecies",
+        }
         record["eligible_supervised"] = bool(has_label and record["image_license"] in OPEN_LICENSES)
     else:
         record["eligible_supervised"] = as_bool(record["eligible_supervised"])

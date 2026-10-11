@@ -43,3 +43,26 @@ def test_csv_manifest_roundtrip(tmp_path: Path):
     loaded = load_manifest(out)
     assert len(loaded) == 1
     assert loaded.iloc[0]["family"] == "Muscidae"
+
+
+def test_subfamily_and_tribe_labels_are_supervised():
+    from diptera_id.corpus.schema import finalize_record
+
+    for rank, value in (
+        ("subfamily", "Diapriinae"),
+        ("tribe", "Diapriini"),
+    ):
+        record = finalize_record({
+            "source": "BIOSCAN-5M",
+            "source_record_id": f"specimen-{rank}",
+            "source_image_id": f"image-{rank}",
+            "local_path": f"/images/{rank}.jpg",
+            "image_license": "CC-BY",
+            "order": "Hymenoptera",
+            "family": "Diapriidae",
+            rank: value,
+        })
+
+        assert record["identification_level"] == rank
+        assert record["eligible_supervised"] is True
+        assert record["exclusion_reason"] == ""
