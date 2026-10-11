@@ -18,7 +18,7 @@ DATA_ROOT="${DATA_ROOT:-/scratch/$USER/taxalens/v11_hymenoptera_teacher}"
 
 CORPUS_DIR="$DATA_ROOT/pipeline/corpus"
 
-BIOSCAN="$CORPUS_DIR/bioscan_selected.csv"
+BIOSCAN="$CORPUS_DIR/bioscan_raw.parquet"
 INAT="$CORPUS_DIR/inat_raw.parquet"
 GBIF="$CORPUS_DIR/gbif_raw.parquet"
 
