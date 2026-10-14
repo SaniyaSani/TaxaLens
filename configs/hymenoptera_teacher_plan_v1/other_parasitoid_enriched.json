@@ -1,0 +1,15 @@
+{
+  "profile": "hymenoptera-teacher-other_parasitoid_enriched-v1",
+  "target_group": "other_parasitoid_enriched",
+  "role": "other parasitoid diversity",
+  "total_images": 28721,
+  "source_targets": {
+    "BIOSCAN-5M": 3721,
+    "GBIF": 15000,
+    "iNaturalist": 10000
+  },
+  "sampling_rank": "hierarchical",
+  "max_per_source_taxon": 0,
+  "seed": 42,
+  "target_families_file": "configs/hymenoptera_bioscan_scopes/other_parasitoid_enriched.json"
+}

@@ -1,0 +1,15 @@
+{
+  "profile": "hymenoptera-teacher-braconid_ichneumonid-v1",
+  "target_group": "braconid_ichneumonid",
+  "role": "Braconidae and Ichneumonidae",
+  "total_images": 57431,
+  "source_targets": {
+    "BIOSCAN-5M": 25431,
+    "GBIF": 20000,
+    "iNaturalist": 12000
+  },
+  "sampling_rank": "hierarchical",
+  "max_per_source_taxon": 0,
+  "seed": 42,
+  "target_families_file": "configs/hymenoptera_bioscan_scopes/braconid_ichneumonid.json"
+}

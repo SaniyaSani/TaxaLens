@@ -1,0 +1,15 @@
+{
+  "profile": "hymenoptera-teacher-mixed_and_symphyta_context-v1",
+  "target_group": "mixed_and_symphyta_context",
+  "role": "mixed Hymenoptera and Symphyta context",
+  "total_images": 14461,
+  "source_targets": {
+    "BIOSCAN-5M": 2262,
+    "GBIF": 7000,
+    "iNaturalist": 5199
+  },
+  "sampling_rank": "hierarchical",
+  "max_per_source_taxon": 0,
+  "seed": 42,
+  "target_families_file": "configs/hymenoptera_bioscan_scopes/mixed_and_symphyta_context.json"
+}

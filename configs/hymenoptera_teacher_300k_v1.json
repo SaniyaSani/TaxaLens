@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "profile": "hymenoptera-teacher-300k-v1",
+  "description": "Parasitoid-enriched Hymenoptera teacher corpus with all selected BIOSCAN specimens retained.",
+  "total_images": 300000,
+  "parasitoid_groups": [
+    "minute_parasitoid_enriched",
+    "braconid_ichneumonid",
+    "other_parasitoid_enriched"
+  ],
+  "groups": [
+    {
+      "name": "minute_parasitoid_enriched",
+      "role": "minute parasitoid focus",
+      "families_file": "configs/hymenoptera_bioscan_scopes/minute_parasitoid_enriched.json",
+      "source_targets": {
+        "BIOSCAN-5M": 110259,
+        "GBIF": 35000,
+        "iNaturalist": 3686
+      },
+      "config": "configs/hymenoptera_teacher_plan_v1/minute_parasitoid_enriched.json",
+      "total_images": 148945
+    },
+    {
+      "name": "braconid_ichneumonid",
+      "role": "Braconidae and Ichneumonidae",
+      "families_file": "configs/hymenoptera_bioscan_scopes/braconid_ichneumonid.json",
+      "source_targets": {
+        "BIOSCAN-5M": 25431,
+        "GBIF": 20000,
+        "iNaturalist": 12000
+      },
+      "config": "configs/hymenoptera_teacher_plan_v1/braconid_ichneumonid.json",
+      "total_images": 57431
+    },
+    {
+      "name": "other_parasitoid_enriched",
+      "role": "other parasitoid diversity",
+      "families_file": "configs/hymenoptera_bioscan_scopes/other_parasitoid_enriched.json",
+      "source_targets": {
+        "BIOSCAN-5M": 3721,
+        "GBIF": 15000,
+        "iNaturalist": 10000
+      },
+      "config": "configs/hymenoptera_teacher_plan_v1/other_parasitoid_enriched.json",
+      "total_images": 28721
+    },
+    {
+      "name": "aculeata_context",
+      "role": "aculeate ecological context",
+      "families_file": "configs/hymenoptera_bioscan_scopes/aculeata_context.json",
+      "source_targets": {
+        "BIOSCAN-5M": 12442,
+        "GBIF": 8000,
+        "iNaturalist": 30000
+      },
+      "config": "configs/hymenoptera_teacher_plan_v1/aculeata_context.json",
+      "total_images": 50442
+    },
+    {
+      "name": "mixed_and_symphyta_context",
+      "role": "mixed Hymenoptera and Symphyta context",
+      "families_file": "configs/hymenoptera_bioscan_scopes/mixed_and_symphyta_context.json",
+      "source_targets": {
+        "BIOSCAN-5M": 2262,
+        "GBIF": 7000,
+        "iNaturalist": 5199
+      },
+      "config": "configs/hymenoptera_teacher_plan_v1/mixed_and_symphyta_context.json",
+      "total_images": 14461
+    }
+  ],
+  "outside_scope_policy": "Retain in the master manifest as an open-set reservoir; do not include in supervised plan v1."
+}

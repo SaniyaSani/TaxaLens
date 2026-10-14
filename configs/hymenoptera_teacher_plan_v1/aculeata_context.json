@@ -1,0 +1,15 @@
+{
+  "profile": "hymenoptera-teacher-aculeata_context-v1",
+  "target_group": "aculeata_context",
+  "role": "aculeate ecological context",
+  "total_images": 50442,
+  "source_targets": {
+    "BIOSCAN-5M": 12442,
+    "GBIF": 8000,
+    "iNaturalist": 30000
+  },
+  "sampling_rank": "hierarchical",
+  "max_per_source_taxon": 0,
+  "seed": 42,
+  "target_families_file": "configs/hymenoptera_bioscan_scopes/aculeata_context.json"
+}

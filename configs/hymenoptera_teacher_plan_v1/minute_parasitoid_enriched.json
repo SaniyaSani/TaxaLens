@@ -1,0 +1,15 @@
+{
+  "profile": "hymenoptera-teacher-minute_parasitoid_enriched-v1",
+  "target_group": "minute_parasitoid_enriched",
+  "role": "minute parasitoid focus",
+  "total_images": 148945,
+  "source_targets": {
+    "BIOSCAN-5M": 110259,
+    "GBIF": 35000,
+    "iNaturalist": 3686
+  },
+  "sampling_rank": "hierarchical",
+  "max_per_source_taxon": 0,
+  "seed": 42,
+  "target_families_file": "configs/hymenoptera_bioscan_scopes/minute_parasitoid_enriched.json"
+}
