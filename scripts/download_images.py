@@ -60,6 +60,10 @@ def cache_record(
     allowed: set[str],
     root: Path,
     request_interval: float,
+    connect_timeout: float = 45.0,
+    read_timeout: float = 45.0,
+    retries: int = 0,
+    retry_backoff: float = 2.0,
 ) -> tuple[dict, int, int]:
     record = finalize_record(raw)
 
@@ -99,11 +103,56 @@ def cache_record(
     temporary = destination.with_suffix(destination.suffix + ".part")
 
     try:
-        wait_for_request_slot(request_interval)
+        content = None
+        retryable_statuses = {
+            408,
+            425,
+            429,
+            500,
+            502,
+            503,
+            504,
+        }
 
-        with session_for_thread().get(record["image_url"], timeout=45) as response:
-            response.raise_for_status()
-            content = response.content
+        for attempt in range(retries + 1):
+            try:
+                wait_for_request_slot(request_interval)
+
+                with session_for_thread().get(
+                    record["image_url"],
+                    timeout=(connect_timeout, read_timeout),
+                ) as response:
+                    if (
+                        response.status_code in retryable_statuses
+                        and attempt < retries
+                    ):
+                        response.close()
+                        time.sleep(
+                            retry_backoff * (2 ** attempt)
+                        )
+                        continue
+
+                    response.raise_for_status()
+                    content = response.content
+
+                break
+
+            except (
+                requests.Timeout,
+                requests.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+            ):
+                if attempt >= retries:
+                    raise
+
+                time.sleep(
+                    retry_backoff * (2 ** attempt)
+                )
+
+        if content is None:
+            raise RuntimeError(
+                "download attempts ended without image content"
+            )
 
         with Image.open(BytesIO(content)) as opened:
             image = opened.convert("RGB")
@@ -150,6 +199,30 @@ def main() -> None:
         default=0.05,
         help="Minimum interval between request starts across all workers",
     )
+    parser.add_argument(
+        "--connect-timeout",
+        type=float,
+        default=45.0,
+        help="Connection timeout in seconds",
+    )
+    parser.add_argument(
+        "--read-timeout",
+        type=float,
+        default=45.0,
+        help="Image response timeout in seconds",
+    )
+    parser.add_argument(
+        "--retries",
+        type=int,
+        default=0,
+        help="Retries after transient network failures",
+    )
+    parser.add_argument(
+        "--retry-backoff",
+        type=float,
+        default=2.0,
+        help="Initial exponential retry delay in seconds",
+    )
     parser.add_argument("--chunksize", type=int, default=1_000)
     parser.add_argument("--workers", type=int, default=16)
     args = parser.parse_args()
@@ -161,6 +234,14 @@ def main() -> None:
         )
     if args.workers < 1:
         raise SystemExit("--workers must be at least 1")
+    if args.connect_timeout <= 0:
+        raise SystemExit("--connect-timeout must be positive")
+    if args.read_timeout <= 0:
+        raise SystemExit("--read-timeout must be positive")
+    if args.retries < 0:
+        raise SystemExit("--retries cannot be negative")
+    if args.retry_backoff < 0:
+        raise SystemExit("--retry-backoff cannot be negative")
 
     allowed = {
         normalize_license(value)
