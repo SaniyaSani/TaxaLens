@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "profile": "hymenoptera-url-baseline-v1",
+  "training_rows": 144817,
+  "shard_size": 1000,
+  "seed": 42,
+  "encoders": {
+    "dino": {
+      "model": "facebook/dinov3-vitb16-pretrain-lvd1689m",
+      "image_size": 512,
+      "batch_size": 4
+    },
+    "bioclip": {
+      "model": "hf-hub:imageomics/bioclip-2",
+      "image_size": 224,
+      "batch_size": 8
+    }
+  },
+  "fusion": "equal_weight_l2_concat",
+  "training": {
+    "min_family": 50,
+    "min_genus": 25,
+    "min_species": 12,
+    "species_label_quality": "A,B",
+    "gate_quantile": 0.05,
+    "gate_margin": 0.02
+  }
+}
