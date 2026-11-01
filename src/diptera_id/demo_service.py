@@ -101,25 +101,49 @@ class TaxaLensRuntime:
                 self._retrieval = RetrievalIndex.load(self.model_dir)
         return self
 
-    def predict(self, image: Image.Image, top_k: int = 5) -> dict[str, Any]:
+    def embed(self, image: Image.Image):
+        """Embed one image without running a taxonomic head."""
         if image is None:
             raise ValueError("Upload an image first")
+
         specimen = ImageOps.exif_transpose(image).convert("RGB")
+
         with self._lock:
             self.load()
-            embedding_config = self._classifiers.metadata.get("embedding", {})
-            tile_grid = int(embedding_config.get("tile_grid", 1))
-            include_whole = bool(embedding_config.get("include_whole", True))
-            vector = (
-                self._embedder.embed_multicrop(
+            embedding_config = self._classifiers.metadata.get(
+                "embedding",
+                {},
+            )
+            tile_grid = int(
+                embedding_config.get("tile_grid", 1)
+            )
+            include_whole = bool(
+                embedding_config.get("include_whole", True)
+            )
+
+            if tile_grid > 1:
+                return self._embedder.embed_multicrop(
                     specimen,
                     tile_grid=tile_grid,
                     include_whole=include_whole,
                 )
-                if tile_grid > 1
-                else self._embedder.embed_one(specimen)
+
+            return self._embedder.embed_one(specimen)
+
+    def predict_vector(
+        self,
+        vector,
+        top_k: int = 5,
+        *,
+        include_keys: bool = True,
+    ) -> dict[str, Any]:
+        """Run hierarchy and retrieval from an existing embedding."""
+        with self._lock:
+            self.load()
+            predictions = self._classifiers.predict_all(
+                vector,
+                top_k=top_k,
             )
-            predictions = self._classifiers.predict_all(vector, top_k=top_k)
             neighbours = self._retrieval.search(vector, k=8)
             open_set = getattr(
                 self._classifiers,
@@ -132,43 +156,112 @@ class TaxaLensRuntime:
             if predictions.get("family")
             else None
         )
-        genera = candidate_genera(predictions.get("genus", []))
-        thresholds = {"family": 0.40, "genus": 0.50, "species": 0.65}
+        genera = candidate_genera(
+            predictions.get("genus", [])
+        )
+        thresholds = {
+            "family": 0.40,
+            "genus": 0.50,
+            "species": 0.65,
+        }
         accepted_rank = None
         accepted_taxon = None
+
         for rank in ("family", "genus", "species"):
             candidates = predictions.get(rank) or []
-            if open_set.get("rejected") and open_set.get("rank") == rank:
+
+            if (
+                open_set.get("rejected")
+                and open_set.get("rank") == rank
+            ):
                 break
-            if candidates and candidates[0]["probability"] >= thresholds[rank]:
+
+            if (
+                candidates
+                and candidates[0]["probability"]
+                >= thresholds[rank]
+            ):
                 accepted_rank = rank
                 accepted_taxon = candidates[0]["taxon"]
             else:
                 break
 
-        return {
-            "accepted": {"rank": accepted_rank, "taxon": accepted_taxon},
-            "predictions": predictions,
-            "open_set": open_set,
-            "similar_specimens": neighbours,
-            "diagnostics": diagnostic_help(
+        if include_keys:
+            diagnostics = diagnostic_help(
                 best_family,
                 self.root / "data" / "morphology_rules.json",
                 self.root / "data" / "key_references.json",
-            ),
-            "key_suggestions": self.key_finder.find(
+            )
+            key_suggestions = self.key_finder.find(
                 best_family,
                 genera,
                 live=False,
-            ),
-            "key_guide": self.key_navigator.build(best_family, genera),
+            )
+            key_guide = self.key_navigator.build(
+                best_family,
+                genera,
+            )
+        else:
+            diagnostics = {
+                "message": (
+                    "The current morphology navigator is "
+                    "Diptera-specific."
+                )
+            }
+            key_suggestions = {"results": []}
+            key_guide = {
+                "title": "Hymenoptera morphology",
+                "scope": "specialist verification required",
+                "coverage": (
+                    "Hymenoptera key navigator not yet attached"
+                ),
+                "candidate_genera": genera,
+                "steps": [],
+                "stop_rules": [
+                    "Do not apply Diptera-specific keys "
+                    "to Hymenoptera."
+                ],
+            }
+
+        return {
+            "accepted": {
+                "rank": accepted_rank,
+                "taxon": accepted_taxon,
+            },
+            "predictions": predictions,
+            "open_set": open_set,
+            "similar_specimens": neighbours,
+            "diagnostics": diagnostics,
+            "key_suggestions": key_suggestions,
+            "key_guide": key_guide,
             "warnings": [
-                "Probabilities are model scores, not taxonomic certainty.",
-                "A species suggestion is a candidate, not a determination; verify it in an applicable key.",
-                "Field photos and preserved specimens are different visual domains.",
-                "If a required structure is invisible, stop at family/genus or request another view, preparation, DNA, or specialist review.",
+                (
+                    "Probabilities are model scores, "
+                    "not taxonomic certainty."
+                ),
+                (
+                    "A species suggestion is a candidate, "
+                    "not a determination."
+                ),
+                (
+                    "Field photos and preserved specimens "
+                    "are different visual domains."
+                ),
+                (
+                    "If a required structure is invisible, "
+                    "request another view, preparation, DNA, "
+                    "or specialist review."
+                ),
             ],
         }
+
+    def predict(
+        self,
+        image: Image.Image,
+        top_k: int = 5,
+    ) -> dict[str, Any]:
+        vector = self.embed(image)
+        return self.predict_vector(vector, top_k=top_k)
 
     def guide(self, family: str | None, genera: Iterable[str]) -> dict[str, Any]:
         return self.key_navigator.build(family, genera)
