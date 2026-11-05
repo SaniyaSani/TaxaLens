@@ -79,6 +79,7 @@ def _order_markdown(payload: dict) -> str:
     selected = _selected_order(payload)
     suggested = str(
         order.get("suggested")
+        or order.get("predicted_order")
         or order.get("predicted")
         or order.get("router_order")
         or order.get("routed_order")
@@ -116,6 +117,65 @@ def _order_markdown(payload: dict) -> str:
         f"Router confidence: **{confidence_text}** · "
         f"mode: **{mode}**"
     )
+
+
+def _hymenoptera_key_outputs(family: str | None, genera: list[str]):
+    """Prioritize published key leads without claiming to score image characters."""
+    name = str(family or "").strip()
+    genus_text = ", ".join(f"*{value}*" for value in genera[:3])
+    family_text = name or "the predicted family"
+    guide = [
+        "### What to inspect next",
+        f"**Working hypothesis:** {family_text}"
+        + (f"; compare {genus_text}." if genus_text else "."),
+        "1. **Head and antennae:** take a sharp frontal and lateral close-up; "
+        "check antennal segments and facial structures in the applicable key.",
+        "2. **Wings:** photograph a wing flat, including the base, veins and "
+        "margin. If wings are absent, record that rather than guessing venation.",
+        "3. **Body junction and legs:** capture the mesosoma-metasoma "
+        "attachment, propodeum and hind-leg details from more than one angle.",
+        "4. **Sex and life stage:** note them before entering a sex- or "
+        "stage-specific key; obtain higher magnification when required.",
+        "",
+        "> These are prioritized views to acquire, **not characters verified "
+        "by the image model**. Stop at the highest supported rank when "
+        "critical structures are hidden or blurry.",
+    ]
+    checks = [
+        "Head and antennae visible in focus",
+        "Wing base and venation visible, or winglessness recorded",
+        "Body junction and hind legs visible",
+        "Sex and life stage recorded",
+    ]
+    keys = [
+        "### Published identification resources",
+        "- [Hymenoptera of the world: an identification guide to families]"
+        "(https://www.publications.gc.ca/site/eng/9.644683/publication.html)"
+        " — worldwide family key; verify current family concepts.",
+    ]
+    if name in {"Braconidae", "Ichneumonidae", "Figitidae",
+                "Pteromalidae", "Eulophidae", "Mymaridae",
+                "Platygastridae", "Diapriidae", "Encyrtidae"}:
+        keys.append(
+            "- [Interactive key to Central European parasitic wasps]"
+            "(https://parasitic-wasps.identificationkey.org/mkey.html)"
+            " — regional, higher-level parasitoid key; confirm that this "
+            "family and specimen are in scope."
+        )
+    if name == "Ichneumonidae":
+        keys.append(
+            "- [HymenoKeys: families and Ichneumonidae subfamilies]"
+            "(https://www.mapress.com/zt/article/view/zootaxa.5584.2.4)"
+            " — publication describing the interactive key; subfamilies, "
+            "not a species-level determination."
+        )
+    keys.append(
+        "\n_Key links are leads to check, not confirmation of the AI label. "
+        "The model has not automatically traversed these keys._"
+    )
+    return "\n\n".join(guide), gr.CheckboxGroup(
+        choices=checks, value=[]
+    ), "\n".join(keys)
 
 
 def _diptera_key_outputs(
@@ -189,19 +249,8 @@ def identify(image, order_mode):
         )
         keys_output = keys_markdown(keys)
     elif selected_order == "Hymenoptera":
-        guide_output = (
-            "### Hymenoptera evidence\n"
-            "The Hymenoptera classifier and similar-specimen "
-            "retrieval are active. A dedicated Hymenoptera "
-            "morphology navigator is not attached yet."
-        )
-        checks_output = gr.CheckboxGroup(
-            choices=[],
-            value=[],
-        )
-        keys_output = (
-            "Diptera keys are intentionally disabled for "
-            "Hymenoptera results."
+        guide_output, checks_output, keys_output = (
+            _hymenoptera_key_outputs(family, genera)
         )
     else:
         guide_output = (
@@ -393,6 +442,15 @@ with gr.Blocks(
                         interactive=False
                     )
 
+            gr.Markdown("## Next: verify the identification")
+            key_guide = gr.Markdown(
+                "Upload an image to see which structures to photograph "
+                "and inspect in an applicable key."
+            )
+            key_results = gr.Markdown(
+                "Applicable published key leads appear here with the result."
+            )
+
     with gr.Tabs():
         with gr.Tab("Similar specimens"):
             neighbours_gallery = gr.Gallery(
@@ -411,10 +469,6 @@ with gr.Blocks(
                 choices=[],
                 interactive=False,
             )
-            key_guide = gr.Markdown(
-                "Upload an image to activate applicable "
-                "order-specific evidence tools."
-            )
             evidence_checks = gr.CheckboxGroup(
                 label="Visible evidence recorded",
                 choices=[],
@@ -422,9 +476,6 @@ with gr.Blocks(
             live_search_button = gr.Button(
                 "Search current published Diptera keys",
                 interactive=False,
-            )
-            key_results = gr.Markdown(
-                "No key search has been performed."
             )
 
         with gr.Tab("Cautions"):
@@ -492,3 +543,4 @@ if __name__ == "__main__":
         default_concurrency_limit=1,
         max_size=12,
     ).launch(share=share)
+
