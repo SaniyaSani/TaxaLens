@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Evidence-first Diptera and Hymenoptera identification">
+  <title>TaxaLens · Identify Diptera and Hymenoptera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <nav>
+      <a class="brand" href="#">TaxaLens</a>
+      <span class="beta">Research preview</span>
+    </nav>
+    <div class="hero-copy">
+      <p class="eyebrow">Evidence-first insect identification</p>
+      <h1>Look closer.<br><em>Know what matters.</em></h1>
+      <p class="lead">Upload a fly, bee, ant, sawfly or wasp. TaxaLens proposes a taxon, retrieves similar specimens and tells you which structures to verify in a published key.</p>
+    </div>
+  </header>
+
+  <main>
+    <section class="identify-grid">
+      <article class="upload-card">
+        <label id="drop-zone" class="drop-zone" for="specimen">
+          <input id="specimen" type="file" accept="image/*">
+          <img id="preview" alt="">
+          <div id="drop-copy">
+            <span class="drop-icon">↥</span>
+            <strong>Drop a specimen photograph</strong>
+            <small>or click to browse · JPG, PNG or WEBP · max 15 MB</small>
+          </div>
+        </label>
+
+        <fieldset class="order-control">
+          <legend>Order</legend>
+          <label><input type="radio" name="order" value="Auto" checked><span>Auto</span></label>
+          <label><input type="radio" name="order" value="Diptera"><span>Diptera</span></label>
+          <label><input type="radio" name="order" value="Hymenoptera"><span>Hymenoptera</span></label>
+        </fieldset>
+        <button id="identify" type="button" disabled>Identify specimen</button>
+        <p id="status" role="status">Choose a photograph to begin.</p>
+      </article>
+
+      <article class="result-card" aria-live="polite">
+        <div id="empty-result" class="empty-result">
+          <span>01</span>
+          <h2>Your result will appear here</h2>
+          <p>TaxaLens reports model scores separately from morphological evidence.</p>
+        </div>
+        <div id="result" hidden>
+          <div class="result-head">
+            <div>
+              <p class="eyebrow">Best supported result</p>
+              <h2 id="accepted-taxon">—</h2>
+              <p id="accepted-rank">—</p>
+            </div>
+            <div id="order-badge" class="order-badge">—</div>
+          </div>
+
+          <div class="confidence-block">
+            <div class="confidence-label"><span>Router confidence</span><strong id="router-confidence">—</strong></div>
+            <div class="meter"><span id="router-meter"></span></div>
+          </div>
+
+          <div class="rank-grid">
+            <section><h3>Family</h3><div id="family-list"></div></section>
+            <section><h3>Genus</h3><div id="genus-list"></div></section>
+            <section><h3>Species candidates</h3><div id="species-list"></div></section>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section id="verification" class="verification" hidden>
+      <div class="section-heading">
+        <p class="eyebrow">AI-guided verification</p>
+        <h2>What should you look at next?</h2>
+        <p>The model prioritises the next useful views. It does not pretend that hidden structures have been observed.</p>
+      </div>
+      <div id="steps" class="steps"></div>
+      <div class="key-panel">
+        <div><p class="eyebrow">Published resources</p><h3>Continue in an applicable key</h3></div>
+        <div id="resources"></div>
+      </div>
+    </section>
+
+    <section id="neighbour-section" class="neighbours" hidden>
+      <div class="section-heading">
+        <p class="eyebrow">Visual evidence</p>
+        <h2>Similar reference specimens</h2>
+      </div>
+      <div id="neighbours" class="gallery"></div>
+    </section>
+
+    <aside class="caution">
+      <strong>Not a final determination.</strong>
+      <span>Probabilities are model scores. Verify visible characters, geographic scope, sex and life stage before naming a specimen.</span>
+    </aside>
+  </main>
+
+  <footer><span>TaxaLens</span><span>Diptera + Hymenoptera · DINOv3 + BioCLIP</span></footer>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
